@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>8D Report Module - Quality Hub</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --primary: #00AEEF;
+            --primary-glow: rgba(0, 174, 239, 0.5);
+            --bg-dark: #0b1120;
+            --text-main: #f8fafc;
+            --panel-bg: rgba(30, 41, 59, 0.85);
+            --border-color: rgba(255, 255, 255, 0.15);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
+
+        body {
+            background-color: var(--bg-dark); color: var(--text-main);
+            min-height: 100vh; overflow-x: hidden;
+        }
+
+        .bg-layer {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: -2;
+            background-image: url("{{ url_for('static', filename='images/batterySPC.png') }}");
+            background-size: cover; background-position: center;
+            filter: brightness(0.3) contrast(1.2);
+        }
+
+        .overlay {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: -1;
+            background: linear-gradient(135deg, rgba(11,17,32,0.95) 0%, rgba(11,17,32,0.7) 100%);
+            backdrop-filter: blur(8px);
+        }
+
+        .navbar {
+            height: 80px; display: flex; justify-content: space-between; align-items: center;
+            padding: 0 40px; background: rgba(11, 17, 32, 0.9);
+            border-bottom: 1px solid var(--border-color);
+        }
+        .navbar-brand a { color: #fff; font-size: 1.6rem; font-weight: 700; text-decoration: none; display: flex; align-items: center; gap: 12px; }
+        .navbar-brand i { color: var(--primary); }
+        .navbar-back { color: #94a3b8; text-decoration: none; font-weight: 500; font-size: 1.1rem; transition: 0.3s; }
+        .navbar-back:hover { color: #fff; }
+
+        .container {
+            max-width: 1800px; margin: 40px auto; padding: 0 20px;
+            display: grid; grid-template-columns: 550px 1fr; gap: 30px; align-items: start;
+        }
+
+        .glass-panel {
+            background: var(--panel-bg); border: 1px solid var(--border-color); border-radius: 16px;
+            padding: 30px; box-shadow: 0 15px 40px rgba(0,0,0,0.5);
+        }
+
+        .panel-header { font-size: 1.3rem; font-weight: 700; margin-bottom: 25px; color: var(--primary); border-bottom: 1px solid var(--border-color); padding-bottom: 15px; display: flex; justify-content: space-between; align-items: center;}
+
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; font-size: 0.85rem; color: #cbd5e1; margin-bottom: 6px; font-weight: 600;}
+        .form-control {
+            width: 100%; background: rgba(0,0,0,0.4); border: 1px solid var(--border-color);
+            color: #fff; padding: 10px 12px; border-radius: 8px; font-size: 0.95rem; outline: none; transition: 0.3s;
+        }
+        .form-control:focus { border-color: var(--primary); box-shadow: 0 0 10px var(--primary-glow); }
+        textarea.form-control { resize: vertical; min-height: 80px; }
+        select.form-control { appearance: none; }
+
+        .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+
+        .btn-run {
+            width: 100%; padding: 18px; background: var(--primary); color: #000;
+            border: none; border-radius: 8px; font-size: 1.1rem; font-weight: 800;
+            cursor: pointer; transition: 0.3s; box-shadow: 0 0 20px var(--primary-glow);
+            margin-top: 15px;
+        }
+        .btn-run:hover { transform: translateY(-3px); box-shadow: 0 5px 30px var(--primary-glow); }
+
+        .btn-export {
+            padding: 10px 20px; background: #0f172a; border: 1px solid var(--primary);
+            color: var(--primary); border-radius: 8px; font-weight: 600; cursor: pointer; transition: 0.2s;
+        }
+        .btn-export:hover { background: var(--primary); color: #000; }
+
+        .loader { display: none; text-align: center; padding: 60px; color: var(--primary); font-size: 2.5rem; }
+
+        /* --- PRAWDZIWY FORMAT PAPIERU A4 DLA RAPORTU --- */
+        .paper-wrapper {
+            background: #e2e8f0; padding: 20px; border-radius: 12px;
+            display: none; justify-content: center;
+        }
+
+        .a4-paper {
+            background: #fff; color: #000; width: 100%; max-width: 210mm;
+            min-height: 297mm; padding: 15mm; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            font-family: 'Arial', sans-serif; font-size: 9pt;
+        }
+
+        .paper-header {
+            display: flex; justify-content: space-between; align-items: center;
+            border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 15px;
+        }
+        .paper-header h1 { font-size: 18pt; font-weight: bold; margin: 0; text-transform: uppercase;}
+        .paper-header .doc-id { font-size: 12pt; font-weight: bold; color: #555; }
+
+        .info-grid {
+            display: grid; grid-template-columns: repeat(4, 1fr); gap: -1px;
+            border: 1px solid #000; margin-bottom: 15px;
+        }
+        .info-cell {
+            border: 1px solid #000; padding: 5px;
+        }
+        .info-label { font-size: 7pt; color: #555; display: block; margin-bottom: 2px; }
+        .info-value { font-weight: bold; font-size: 8.5pt;}
+
+        .info-grid-2 {
+            display: grid; grid-template-columns: 1fr 1fr; gap: -1px;
+            border: 1px solid #000; margin-bottom: 15px; border-top: none;
+        }
+
+        .section-title {
+            background: #f1f5f9; border: 1px solid #000; padding: 6px 10px;
+            font-weight: bold; font-size: 10pt; margin-top: 10px; border-bottom: none;
+        }
+        .section-content {
+            border: 1px solid #000; padding: 10px; min-height: 50px; margin-bottom: 10px;
+            white-space: pre-wrap; line-height: 1.4;
+        }
+        .section-content p { margin-bottom: 5px; }
+        .section-content strong { color: #333; }
+
+        .action-table { width: 100%; border-collapse: collapse; margin-bottom: 10px; border: 1px solid #000;}
+        .action-table th, .action-table td { border: 1px solid #000; padding: 6px; text-align: left; }
+        .action-table th { background: #f1f5f9; font-weight: bold; }
+
+        @media print {
+            @page { size: portrait; margin: 10mm; }
+            body { background: #fff !important; }
+            .bg-layer, .overlay, .navbar, .glass-panel:first-child, .action-btns { display: none !important; }
+            .container { display: block; margin: 0; padding: 0; max-width: 100%; }
+            .paper-wrapper { background: none; padding: 0; display: block !important; }
+            .a4-paper { box-shadow: none; max-width: 100%; min-height: auto; padding: 0; }
+            .section-title { background: #e2e8f0 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .action-table th { background: #e2e8f0 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="bg-layer"></div>
+    <div class="overlay"></div>
+
+    <nav class="navbar">
+        <div class="navbar-brand">
+            <a href="/"><i class="fas fa-tools"></i> 8D Problem Solving (Format: P.ZA.F11)</a>
+        </div>
+        <a href="/" class="navbar-back"><i class="fas fa-arrow-left"></i> Wróć do Hubu</a>
+    </nav>
+
+    <div class="container">
+        <div class="glass-panel">
+            <div class="panel-header">
+                <span><i class="fas fa-edit"></i> Dane Wejściowe do Raportu</span>
+                <button class="btn-export" onclick="loadExample()" style="padding: 5px 10px; font-size: 0.8rem;"><i class="fas fa-bolt"></i> Przeładuj Przykład</button>
+            </div>
+
+            <div class="row-2">
+                <div class="form-group">
+                    <label>Nr reklamacji</label>
+                    <input type="text" class="form-control" id="claimNo">
+                </div>
+                <div class="form-group">
+                    <label>Data reklamacji</label>
+                    <input type="date" class="form-control" id="claimDate">
+                </div>
+            </div>
+
+            <div class="row-2">
+                <div class="form-group">
+                    <label>Dostawca / Klient</label>
+                    <input type="text" class="form-control" id="supplier">
+                </div>
+                <div class="form-group">
+                    <label>Osoba zgłaszająca</label>
+                    <input type="text" class="form-control" id="reporter">
+                </div>
+            </div>
+
+            <div class="row-2">
+                <div class="form-group">
+                    <label>Nazwa produktu</label>
+                    <input type="text" class="form-control" id="productName">
+                </div>
+                <div class="form-group">
+                    <label>Nr magazynowy / Part No</label>
+                    <input type="text" class="form-control" id="partNo">
+                </div>
+            </div>
+
+            <div class="row-2">
+                <div class="form-group">
+                    <label>Ilość zamówiona</label>
+                    <input type="number" class="form-control" id="qtyOrdered">
+                </div>
+                <div class="form-group">
+                    <label>Ilość z wadą</label>
+                    <input type="number" class="form-control" id="qtyNOK">
+                </div>
+            </div>
+
+            <div class="row-2">
+                <div class="form-group">
+                    <label>Nr seryjny (SN)</label>
+                    <input type="text" class="form-control" id="serialNo">
+                </div>
+                <div class="form-group">
+                    <label>Problem nawracający?</label>
+                    <select class="form-control" id="isRecurring">
+                        <option value="Nie">Nie</option>
+                        <option value="Tak">Tak</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Opis wady, przyczyna reklamacji</label>
+                <textarea class="form-control" id="problemDesc"></textarea>
+            </div>
+
+            <button class="btn-run" onclick="generate8D()"><i class="fas fa-brain"></i> Analizuj 8D przy pomocy AI</button>
+        </div>
+
+        <div>
+            <div id="loadingIndicator" class="loader">
+                <i class="fas fa-network-wired fa-spin"></i>
+                <p style="font-size: 1.2rem; margin-top: 15px; color: #cbd5e1;">Model AI przeprowadza analizę RCA i buduje raport 8D...</p>
+            </div>
+
+            <div style="display: flex; justify-content: flex-end; margin-bottom: 15px;" id="btnContainer" style="display:none;">
+                <button class="btn-export" id="printBtn" onclick="window.print()" style="display: none;"><i class="fas fa-print"></i> Drukuj / Zapisz PDF</button>
+            </div>
+
+            <div class="paper-wrapper" id="resultsDashboard">
+                <div class="a4-paper">
+
+                    <div class="paper-header">
+                        <h1>RAPORT 8D</h1>
+                        <span class="doc-id">Form. P.ZA.F11</span>
+                    </div>
+
+                    <div class="info-grid">
+                        <div class="info-cell">
+                            <span class="info-label">Nr reklamacji</span>
+                            <span class="info-value" id="out_claimNo"></span>
+                        </div>
+                        <div class="info-cell">
+                            <span class="info-label">Data reklamacji</span>
+                            <span class="info-value" id="out_claimDate"></span>
+                        </div>
+                        <div class="info-cell">
+                            <span class="info-label">Nr raportu 8D</span>
+                            <span class="info-value" id="out_8dNo">8D-2026-05-001</span>
+                        </div>
+                        <div class="info-cell">
+                            <span class="info-label">Nr magazynowy</span>
+                            <span class="info-value" id="out_partNo"></span>
+                        </div>
+                    </div>
+
+                    <div class="info-grid" style="margin-top: -15px; border-top: none;">
+                        <div class="info-cell">
+                            <span class="info-label">Ilość zamówiona</span>
+                            <span class="info-value" id="out_qtyOrdered"></span>
+                        </div>
+                        <div class="info-cell">
+                            <span class="info-label">Ilość z wadą</span>
+                            <span class="info-value" id="out_qtyNOK"></span>
+                        </div>
+                        <div class="info-cell">
+                            <span class="info-label">Nazwa produktu/usługi</span>
+                            <span class="info-value" id="out_productName"></span>
+                        </div>
+                        <div class="info-cell">
+                            <span class="info-label">List przewozowy</span>
+                            <span class="info-value">-</span>
+                        </div>
+                    </div>
+
+                    <div class="info-grid-2">
+                        <div class="info-cell">
+                            <span class="info-label">Dostawca:</span>
+                            <span class="info-value" id="out_supplier"></span>
+                        </div>
+                        <div class="info-cell">
+                            <span class="info-label">Osoba zgłaszająca reklamację:</span>
+                            <span class="info-value" id="out_reporter"></span>
+                        </div>
+                    </div>
+
+                    <div class="info-grid-2" style="margin-top: -15px;">
+                        <div class="info-cell">
+                            <span class="info-label">Opis wady, przyczyna reklamacji:</span>
+                            <span class="info-value" id="out_problemDesc"></span>
+                        </div>
+                        <div class="info-cell">
+                            <span class="info-label">Nr seryjny:</span> <span class="info-value" id="out_serialNo"></span><br>
+                            <span class="info-label" style="margin-top: 5px;">Problem nawracający:</span> <span class="info-value" id="out_recurring"></span>
+                        </div>
+                    </div>
+
+                    <div class="section-title">D1 Zespół (problem solving team)</div>
+                    <div class="section-content" id="resD1" style="min-height: 30px;">
+                        <p><strong>Lider zespołu:</strong> <span id="resD1_leader"></span></p>
+                        <p><strong>Członkowie zespołu:</strong> <span id="resD1_members"></span></p>
+                    </div>
+
+                    <div class="section-title">D2 Opis problemu (Problem description)</div>
+                    <div class="section-content" id="resD2">-</div>
+
+                    <div class="section-title">D3 Natychmiastowe działania powstrzymujące (Immediate containment actions)</div>
+                    <table class="action-table">
+                        <thead><tr><th style="width: 50px;">Lp.</th><th>Działanie</th><th style="width: 200px;">Odpowiedzialne osoby</th><th style="width: 150px;">Termin</th></tr></thead>
+                        <tbody id="resD3"></tbody>
+                    </table>
+
+                    <div class="section-title">D4 Analiza przyczyn niezgodności (Root cause analysis)</div>
+                    <div class="section-content" id="resD4">-</div>
+
+                    <div class="section-title">D5 Określenie działań korygujących i weryfikujących (Possible corrective actions and verifications)</div>
+                    <table class="action-table">
+                        <thead><tr><th style="width: 50px;">Lp.</th><th>Działanie</th><th style="width: 200px;">Odpowiedzialne osoby</th><th style="width: 150px;">Termin</th></tr></thead>
+                        <tbody id="resD5"></tbody>
+                    </table>
+
+                    <div class="section-title">D6 Wdrożenie długookresowych działań korygujących (Implementation of permanent corrective actions)</div>
+                    <table class="action-table">
+                        <thead><tr><th>Działanie</th><th style="width: 250px;">Podpis i data</th></tr></thead>
+                        <tbody id="resD6"></tbody>
+                    </table>
+
+                    <div class="section-title">D7 Działania minimalizujące / zapobiegawcze (Prevent Recurrence)</div>
+                    <div class="section-content" id="resD7" style="min-height: 40px;">-</div>
+
+                    <div class="section-title">D8 Wnioski i uznanie zespołu (Closure)</div>
+                    <div class="section-content" id="resD8" style="min-height: 40px;">-</div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Auto-fill przy starcie
+        function loadExample() {
+            document.getElementById('claimNo').value = "REC/2026/05/112";
+            document.getElementById('claimDate').value = "2026-05-24";
+            document.getElementById('supplier').value = "Dostawca Komponentów Aluminiowych";
+            document.getElementById('reporter').value = "Kuba (Inżynier Jakości BMZ Gliwice)";
+            document.getElementById('productName').value = "Bateria Li-Ion 48V E-Bike";
+            document.getElementById('partNo').value = "BMZ-48V-10AH-001";
+            document.getElementById('qtyOrdered').value = "500";
+            document.getElementById('qtyNOK').value = "12";
+            document.getElementById('serialNo').value = "SN: 100234 - 100245";
+            document.getElementById('isRecurring').value = "Nie";
+            document.getElementById('problemDesc').value = "Zwarcie wewnętrzne w module w trakcie testu EOL (Hi-Pot). Zauważono przeciętą izolację przewodu prądowego. Przyczyną jest ostra krawędź aluminiowej obudowy dostarczonej przez podwykonawcę.";
+        }
+
+        window.onload = loadExample;
+
+        async function generate8D() {
+            const problemDesc = document.getElementById('problemDesc').value;
+            if(!problemDesc) return alert("Musisz wypełnić Opis Wady!");
+
+            document.getElementById('resultsDashboard').style.display = 'none';
+            document.getElementById('printBtn').style.display = 'none';
+            document.getElementById('loadingIndicator').style.display = 'block';
+
+            document.getElementById('out_claimNo').innerText = document.getElementById('claimNo').value;
+            document.getElementById('out_claimDate').innerText = document.getElementById('claimDate').value;
+            document.getElementById('out_supplier').innerText = document.getElementById('supplier').value;
+            document.getElementById('out_reporter').innerText = document.getElementById('reporter').value;
+            document.getElementById('out_productName').innerText = document.getElementById('productName').value;
+            document.getElementById('out_partNo').innerText = document.getElementById('partNo').value;
+            document.getElementById('out_qtyOrdered').innerText = document.getElementById('qtyOrdered').value;
+            document.getElementById('out_qtyNOK').innerText = document.getElementById('qtyNOK').value;
+            document.getElementById('out_serialNo').innerText = document.getElementById('serialNo').value;
+            document.getElementById('out_recurring').innerText = document.getElementById('isRecurring').value;
+            document.getElementById('out_problemDesc').innerText = problemDesc;
+
+            const payload = {
+                customer: document.getElementById('supplier').value,
+                product: document.getElementById('productName').value,
+                problem: problemDesc,
+                where: "Wykryto na linii montażowej / EOL",
+                when: document.getElementById('claimDate').value,
+                qty: document.getElementById('qtyNOK').value
+            };
+
+            try {
+                const response = await fetch('/api/generate_8d', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await response.json();
+
+                if(response.ok && !data.error) {
+
+                    document.getElementById('resD1_leader').innerText = data.d1_leader || "Kuba (Inżynier Jakości)";
+                    document.getElementById('resD1_members').innerText = data.d1_members || "Produkcja, Technolog, Utrzymanie Ruchu";
+                    document.getElementById('resD2').innerText = data.d2 || problemDesc;
+
+                    // Wypełnianie tabeli D3
+                    const tb3 = document.getElementById('resD3');
+                    tb3.innerHTML = '';
+                    if (data.d3 && Array.isArray(data.d3)) {
+                        data.d3.forEach((act, idx) => {
+                            tb3.innerHTML += `<tr><td style="text-align:center;">${idx+1}.</td><td>${act.action}</td><td>${act.owner}</td><td>${act.date}</td></tr>`;
+                        });
+                    } else { tb3.innerHTML = `<tr><td colspan="4">Brak danych</td></tr>`; }
+
+                    document.getElementById('resD4').innerText = data.d4 || "-";
+
+                    // Wypełnianie tabeli D5
+                    const tb5 = document.getElementById('resD5');
+                    tb5.innerHTML = '';
+                    if (data.d5 && Array.isArray(data.d5)) {
+                        data.d5.forEach((act, idx) => {
+                            tb5.innerHTML += `<tr><td style="text-align:center;">${idx+1}.</td><td>${act.action}</td><td>${act.owner}</td><td>${act.date}</td></tr>`;
+                        });
+                    } else { tb5.innerHTML = `<tr><td colspan="4">Brak danych</td></tr>`; }
+
+                    // Wypełnianie tabeli D6
+                    const tb6 = document.getElementById('resD6');
+                    tb6.innerHTML = '';
+                    if (data.d6 && Array.isArray(data.d6)) {
+                        data.d6.forEach((act) => {
+                            tb6.innerHTML += `<tr><td>${act.action}</td><td>${act.signature}</td></tr>`;
+                        });
+                    } else { tb6.innerHTML = `<tr><td colspan="2">Brak danych</td></tr>`; }
+
+                    document.getElementById('resD7').innerText = data.d7 || "-";
+                    document.getElementById('resD8').innerText = data.d8 || "-";
+
+                    document.getElementById('loadingIndicator').style.display = 'none';
+                    document.getElementById('resultsDashboard').style.display = 'flex';
+                    document.getElementById('printBtn').style.display = 'block';
+                } else {
+                    alert(data.error || "Wystąpił nieznany błąd serwera.");
+                    document.getElementById('loadingIndicator').style.display = 'none';
+                }
+            } catch (err) {
+                alert("Błąd połączenia z serwerem. Upewnij się, że Flask (app.py) działa.");
+                document.getElementById('loadingIndicator').style.display = 'none';
+            }
+        }
+    </script>
+</body>
+</html>

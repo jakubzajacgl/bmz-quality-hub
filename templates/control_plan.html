@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Control Plan - Quality Hub</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #00AEEF; --bg-dark: #0b1120;
+            --panel-bg: rgba(30, 41, 59, 0.9); --border-color: rgba(255, 255, 255, 0.15);
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
+        body { background-color: var(--bg-dark); color: #f8fafc; }
+        .bg-layer { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: -2; background: url("{{ url_for('static', filename='images/batterySPC.png') }}") center/cover; filter: brightness(0.15); }
+        .overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: -1; background: linear-gradient(135deg, rgba(11,17,32,0.95) 0%, rgba(11,17,32,0.7) 100%); backdrop-filter: blur(10px); }
+
+        .navbar { height: 70px; display: flex; justify-content: space-between; align-items: center; padding: 0 40px; background: rgba(11, 17, 32, 0.95); border-bottom: 1px solid var(--border-color); }
+        .container { max-width: 100%; margin: 30px auto; padding: 0 20px; }
+        .glass-panel { background: var(--panel-bg); border: 1px solid var(--border-color); border-radius: 16px; padding: 25px; box-shadow: 0 10px 40px rgba(0,0,0,0.5); }
+
+        /* Tabela Control Plan */
+        .cp-table-wrapper { overflow-x: auto; margin-top: 20px; border: 1px solid var(--border-color); border-radius: 12px; }
+        .cp-table { width: 100%; border-collapse: collapse; font-size: 0.75rem; min-width: 1800px; }
+        .cp-table th { background: rgba(0, 174, 239, 0.15); color: var(--primary); padding: 10px; border: 1px solid var(--border-color); text-transform: uppercase; font-size: 0.65rem; }
+        .cp-table td { border: 1px solid var(--border-color); padding: 5px; background: rgba(0,0,0,0.2); }
+
+        .form-input { width: 100%; background: transparent; border: none; color: #fff; padding: 5px; outline: none; font-size: 0.75rem; resize: none; min-height: 40px; }
+        .form-input:focus { background: rgba(255,255,255,0.05); }
+
+        .btn-action { background: none; border: 1px solid var(--primary); color: var(--primary); padding: 8px 15px; border-radius: 6px; cursor: pointer; font-weight: 700; transition: 0.3s; margin-right: 10px; }
+        .btn-action:hover { background: var(--primary); color: #000; }
+
+        .loader { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 1000; align-items: center; justify-content: center; flex-direction: column; }
+
+        @media print {
+            @page { size: landscape; margin: 5mm; }
+            .navbar, .btn-action, .sticky-footer { display: none !important; }
+            body { background: #fff; color: #000; }
+            .cp-table { width: 100% !important; min-width: 100% !important; zoom: 0.6; }
+            .cp-table th { background: #eee !important; color: #000 !important; border: 1px solid #000 !important; }
+            .cp-table td { border: 1px solid #000 !important; background: #fff !important; }
+            .form-input { color: #000 !important; }
+        }
+
+        .sticky-footer { position: fixed; bottom: 0; left: 0; width: 100%; background: rgba(11, 17, 32, 0.98); padding: 20px 40px; border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end; }
+    </style>
+</head>
+<body>
+    <div id="loader" class="loader">
+        <div style="width: 50px; height: 50px; border: 5px solid rgba(255,255,255,0.1); border-top-color: var(--primary); border-radius: 50%; animation: spin 1s infinite linear;"></div>
+        <h2 style="color: #fff; margin-top: 20px;">AI buduje Plan Kontroli na podstawie PFMEA...</h2>
+    </div>
+
+    <div class="bg-layer"></div>
+    <div class="overlay"></div>
+
+    <nav class="navbar">
+        <div class="navbar-brand"><a href="/"><i class="fas fa-tasks"></i> Control Plan (AIAG/VDA 1st Edition)</a></div>
+        <a href="/" style="color: #94a3b8; text-decoration: none;">Wróć do Hubu</a>
+    </nav>
+
+    <div class="container">
+        <div class="glass-panel">
+            <div style="display: flex; gap: 15px; margin-bottom: 20px;">
+                <button class="btn-action" onclick="importFromPFMEA()" style="border-color: #f59e0b; color: #f59e0b;">
+                    <i class="fas fa-file-import"></i> KROK 1: Importuj z PFMEA
+                </button>
+                <button class="btn-action" onclick="addRow()"><i class="fas fa-plus"></i> Dodaj pusty wiersz</button>
+                <button class="btn-action" onclick="window.print()"><i class="fas fa-print"></i> Drukuj PDF (Landscape)</button>
+            </div>
+
+            <div class="cp-table-wrapper">
+                <table class="cp-table">
+                    <thead>
+                        <tr>
+                            <th rowspan="2" style="width: 50px;">Nr</th>
+                            <th rowspan="2" style="width: 150px;">Proces / Opis</th>
+                            <th rowspan="2" style="width: 120px;">Maszyna / Urządzenie</th>
+                            <th colspan="2">Charakterystyki</th>
+                            <th rowspan="2" style="width: 150px;">Specyfikacja / Tolerancja</th>
+                            <th colspan="3">Metody Kontroli</th>
+                            <th rowspan="2" style="width: 100px;">Metoda Kontroli</th>
+                            <th rowspan="2" style="width: 150px;">Plan Reakcji</th>
+                        </tr>
+                        <tr>
+                            <th style="width: 150px;">Wyrób</th>
+                            <th style="width: 150px;">Proces</th>
+                            <th style="width: 150px;">Technika Pomiarowa</th>
+                            <th style="width: 80px;">Próba</th>
+                            <th style="width: 100px;">Częstotliwość</th>
+                        </tr>
+                    </thead>
+                    <tbody id="cpBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let rowCount = 0;
+
+        function addRow(data = null) {
+            rowCount++;
+            const tbody = document.getElementById('cpBody');
+            const tr = document.createElement('tr');
+            tr.id = `cp-row-${rowCount}`;
+            tr.innerHTML = `
+                <td style="text-align:center;">${rowCount}</td>
+                <td><textarea class="form-input" id="proc-${rowCount}">${data ? data.op : ''}</textarea></td>
+                <td><textarea class="form-input"></textarea></td>
+                <td><textarea class="form-input" id="pchar-${rowCount}">${data ? (data.product_char || '') : ''}</textarea></td>
+                <td><textarea class="form-input" id="prchar-${rowCount}">${data ? (data.process_char || '') : ''}</textarea></td>
+                <td><textarea class="form-input" id="spec-${rowCount}">${data ? (data.spec || '') : ''}</textarea></td>
+                <td><textarea class="form-input" id="tech-${rowCount}">${data ? (data.technique || '') : ''}</textarea></td>
+                <td><textarea class="form-input" id="samp-${rowCount}">${data ? (data.sample || '') : ''}</textarea></td>
+                <td><textarea class="form-input" id="freq-${rowCount}">${data ? (data.frequency || '') : ''}</textarea></td>
+                <td><textarea class="form-input" id="meth-${rowCount}">${data ? (data.method || '') : ''}</textarea></td>
+                <td><textarea class="form-input" id="reac-${rowCount}">${data ? (data.reaction || '') : ''}</textarea></td>
+            `;
+            tbody.appendChild(tr);
+        }
+
+        async function importFromPFMEA() {
+            const rawData = localStorage.getItem('last_pfmea');
+            if(!rawData) {
+                alert("Nie znaleziono danych w PFMEA. Najpierw uzupełnij i zapisz PFMEA.");
+                return;
+            }
+            const fmeaRows = JSON.parse(rawData);
+
+            document.getElementById('loader').style.display = 'flex';
+
+            for(let row of fmeaRows) {
+                try {
+                    const res = await fetch('/api/generate_control_plan', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({ fmea_row: row })
+                    });
+                    const cpData = await res.json();
+                    cpData.op = row.op;
+                    addRow(cpData);
+                } catch(e) { console.error(e); }
+            }
+
+            document.getElementById('loader').style.display = 'none';
+        }
+
+        window.onload = () => { if(rowCount === 0) addRow(); };
+    </script>
+    <style>@keyframes spin { to { transform: rotate(360deg); } }</style>
+</body>
+</html>

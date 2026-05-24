@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Diagram Pareto - BMZ Quality Hub</title>
+
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    :root{
+      --primary:#00AEEF;
+      --primary-glow:rgba(0,174,239,0.5);
+      --bg-dark:#0b1120;
+      --text-main:#f8fafc;
+      --panel-bg:rgba(30,41,59,0.85);
+      --border-color:rgba(255,255,255,0.15);
+      --ok:#10b981;
+      --warn:#f59e0b;
+      --err:#ef4444;
+    }
+    *{box-sizing:border-box;margin:0;padding:0;font-family:Inter,sans-serif}
+    body{
+      min-height:100vh;
+      background:var(--bg-dark);
+      color:var(--text-main);
+      overflow-x:hidden;
+    }
+    .bg-layer{
+      position:fixed; inset:0; z-index:-2;
+      background-image:url("{{ url_for('static', filename='images/batterySPC.png') }}");
+      background-size:cover; background-position:center;
+      filter:brightness(0.28) contrast(1.15);
+    }
+    .overlay{
+      position:fixed; inset:0; z-index:-1;
+      background:linear-gradient(135deg, rgba(11,17,32,0.96), rgba(11,17,32,0.72));
+      backdrop-filter:blur(8px);
+    }
+    .navbar{
+      height:80px; display:flex; justify-content:space-between; align-items:center;
+      padding:0 40px; background:rgba(11,17,32,0.92); border-bottom:1px solid var(--border-color);
+    }
+    .navbar-brand a{
+      color:#fff; text-decoration:none; font-size:1.6rem; font-weight:700;
+      display:flex; align-items:center; gap:12px;
+    }
+    .navbar-brand i{color:var(--primary)}
+    .navbar-back{color:#94a3b8; text-decoration:none; font-weight:500; transition:.25s}
+    .navbar-back:hover{color:#fff}
+
+    .container{
+      max-width:1850px; margin:40px auto; padding:0 20px;
+      display:grid; grid-template-columns: 720px 1fr; gap:30px; align-items:start;
+    }
+    .glass-panel{
+      background:var(--panel-bg); border:1px solid var(--border-color); border-radius:16px;
+      padding:30px; box-shadow:0 15px 40px rgba(0,0,0,0.5);
+      display:flex; flex-direction:column;
+    }
+    .panel-header{
+      font-size:1.3rem; font-weight:700; margin-bottom:25px; color:var(--primary);
+      border-bottom:1px solid var(--border-color); padding-bottom:15px;
+      display:flex; justify-content:space-between; align-items:center;
+    }
+    .subheader{
+      font-size:1.05rem; font-weight:700; color:#fff; margin:18px 0 12px;
+    }
+    .form-group{margin-bottom:15px}
+    .form-group label{
+      display:block; font-size:.85rem; color:#cbd5e1; margin-bottom:6px; font-weight:600;
+    }
+    .form-control{
+      width:100%; background:rgba(0,0,0,0.4); border:1px solid var(--border-color);
+      color:#fff; padding:10px 12px; border-radius:8px; outline:none; transition:.25s;
+    }
+    .form-control:focus{
+      border-color:var(--primary); box-shadow:0 0 10px var(--primary-glow);
+    }
+    .row-2{display:grid; grid-template-columns:1fr 1fr; gap:15px}
+    .row-3{display:grid; grid-template-columns:1fr 1fr 1fr; gap:15px}
+
+    .history-toolbar{
+      display:flex; gap:10px; margin-bottom:15px; background:rgba(0,0,0,0.2);
+      padding:8px; border-radius:6px; border:1px solid var(--border-color); flex-wrap:wrap;
+    }
+    .btn-tool,.btn-export,.btn-run{
+      border:none; cursor:pointer; transition:.2s; display:flex; align-items:center; gap:8px;
+    }
+    .btn-tool{
+      background:rgba(255,255,255,0.05); border:1px solid var(--border-color);
+      color:#fff; padding:6px 12px; font-size:.85rem; border-radius:4px;
+    }
+    .btn-tool:hover:not(:disabled), .btn-export:hover, .btn-run:hover{
+      background:var(--primary); color:#000; border-color:var(--primary);
+    }
+    .btn-tool:disabled{opacity:.35; cursor:not-allowed}
+    .paste-hint{
+      font-size:.85rem; color:var(--ok); margin-top:10px; display:flex; align-items:center; gap:6px;
+      background:rgba(16,185,129,0.05); padding:10px; border-radius:6px; border:1px solid rgba(16,185,129,0.15);
+    }
+
+    .data-grid-container{
+      width:100%; overflow-x:auto; background:rgba(0,0,0,0.2); border:1px solid var(--border-color);
+      border-radius:8px; margin-top:5px; padding:15px;
+    }
+    .data-table{width:100%; border-collapse:collapse; background:transparent}
+    .data-table th,.data-table td{
+      border:1px solid var(--border-color); padding:0; min-width:55px;
+    }
+    .data-table th{
+      background:rgba(0,0,0,0.5); color:#94a3b8; font-size:.85rem; padding:8px; text-align:center; font-weight:600;
+    }
+    .row-header{
+      background:rgba(0,0,0,0.3)!important; color:#cbd5e1!important; font-weight:600;
+      text-align:center; font-size:.85rem; padding:8px!important; white-space:nowrap;
+    }
+    .grid-cell{
+      width:100%; height:100%; background:rgba(255,255,255,0.96); border:1px solid transparent;
+      color:#111827; padding:10px; text-align:left; outline:none; font-variant-numeric:tabular-nums;
+      font-size:.95rem; transition:.2s; font-weight:500;
+    }
+    .grid-cell:focus{
+      background:rgba(0,174,239,0.15); border:1px solid var(--primary);
+      box-shadow:inset 0 0 5px var(--primary-glow);
+    }
+    .num-cell{text-align:right}
+    .readonly-cell{
+      width:100%; background:rgba(255,255,255,0.18); color:#fff; padding:10px; text-align:right;
+      font-variant-numeric:tabular-nums; font-weight:700;
+    }
+
+    .btn-row{display:flex; gap:10px; flex-wrap:wrap; margin-top:15px}
+    .btn-run{
+      width:100%; padding:18px; background:var(--primary); color:#000; border-radius:8px;
+      font-size:1.2rem; font-weight:800; justify-content:center; box-shadow:0 0 20px var(--primary-glow);
+      margin-top:20px;
+    }
+    .results-dashboard{
+      display:none; flex-direction:column; gap:20px; animation:fadeIn .4s ease forwards;
+      background:var(--panel-bg); padding:30px; border-radius:16px;
+    }
+    @keyframes fadeIn{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+    .report-meta{
+      display:grid; grid-template-columns:repeat(3,1fr); gap:15px; background:rgba(0,0,0,0.3);
+      padding:20px; border-radius:12px; border:1px solid var(--border-color); font-size:.95rem; color:#cbd5e1;
+    }
+    .report-meta strong{
+      color:#94a3b8; display:block; font-size:.8rem; text-transform:uppercase; margin-bottom:3px;
+    }
+    .meta-val{font-size:1.05rem; color:#fff; font-weight:500}
+    .chart-wrapper{
+      width:100%; height:420px; background:rgba(0,0,0,0.2);
+      border-radius:12px; padding:15px;
+    }
+    .advanced-table{
+      width:100%; border-collapse:collapse; background:rgba(0,0,0,0.3);
+      border-radius:8px; overflow:hidden; border:1px solid var(--border-color);
+    }
+    .advanced-table th,.advanced-table td{
+      padding:12px; border:1px solid rgba(255,255,255,0.1); text-align:center;
+    }
+    .advanced-table th{
+      background:rgba(0,0,0,0.6); color:var(--primary); font-size:.9rem; font-weight:700;
+    }
+    .advanced-table .row-title{text-align:left; font-weight:600; color:#cbd5e1; padding-left:20px}
+    .status-ok{background:rgba(16,185,129,0.15); color:var(--ok); font-weight:700}
+    .status-warn{background:rgba(245,158,11,0.15); color:var(--warn); font-weight:700}
+    .status-err{background:rgba(239,68,68,0.15); color:var(--err); font-weight:700}
+    .kpi-grid{display:grid; grid-template-columns:repeat(4,1fr); gap:15px}
+    .kpi-card{
+      background:rgba(0,0,0,0.5); border:1px solid var(--border-color); border-radius:12px;
+      padding:18px; text-align:center;
+    }
+    .kpi-label{font-size:.85rem; color:#94a3b8; text-transform:uppercase; letter-spacing:1px; font-weight:600}
+    .kpi-value{font-size:2rem; font-weight:800; color:#fff; margin-top:5px}
+
+    .loader{display:none; text-align:center; padding:60px; color:var(--primary); font-size:2.5rem}
+
+    @media print{
+      body{background:#fff!important; color:#000!important; overflow:visible!important}
+      .bg-layer,.overlay,.navbar,.glass-panel:first-child,.btn-row,.btn-run{display:none!important}
+      .container{grid-template-columns:1fr; margin:0; padding:0; max-width:100%; display:block}
+      .glass-panel{background:none!important; border:none!important; box-shadow:none!important; padding:0!important}
+      .results-dashboard{display:block!important; background:none!important; padding:0!important}
+      .report-meta,.advanced-table,.chart-wrapper{background:#fff!important; color:#000!important}
+      .chart-wrapper{height:360px!important}
+      .status-ok{background:#d1fae5!important; color:#065f46!important}
+      .status-warn{background:#fef3c7!important; color:#92400e!important}
+      .status-err{background:#fee2e2!important; color:#991b1b!important}
+      *{-webkit-print-color-adjust:exact!important; print-color-adjust:exact!important}
+    }
+  </style>
+</head>
+<body>
+  <div class="bg-layer"></div>
+  <div class="overlay"></div>
+
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <a href="/"><i class="fas fa-chart-bar"></i> Moduł Pareto</a>
+    </div>
+    <a href="/" class="navbar-back"><i class="fas fa-arrow-left"></i> Wróć do Hubu</a>
+  </nav>
+
+  <div class="container">
+    <div class="glass-panel">
+      <div class="panel-header">
+        <span><i class="fas fa-sliders-h"></i> Parametry Diagramu Pareto</span>
+      </div>
+
+      <div class="row-2">
+        <div class="form-group">
+          <label for="chartTitle">Tytuł wykresu</label>
+          <input id="chartTitle" class="form-control" type="text" value="Diagram Pareto" />
+        </div>
+        <div class="form-group">
+          <label for="axisLabel">Nazwa osi X</label>
+          <input id="axisLabel" class="form-control" type="text" value="Przyczyna / Problem" />
+        </div>
+      </div>
+
+      <div class="row-3">
+        <div class="form-group">
+          <label for="threshold80">Próg 80%</label>
+          <input id="threshold80" class="form-control" type="number" step="1" value="80" />
+        </div>
+        <div class="form-group">
+          <label for="sortMode">Sortowanie</label>
+          <select id="sortMode" class="form-control">
+            <option value="desc" selected>Malejąco</option>
+            <option value="asc">Rosnąco</option>
+            <option value="none">Bez sortowania</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="topN">Pokaż top N</label>
+          <input id="topN" class="form-control" type="number" min="3" value="20" />
+        </div>
+      </div>
+
+      <div class="subheader"><i class="fas fa-table"></i> Dane wejściowe</div>
+      <div class="history-toolbar">
+        <button class="btn-tool" onclick="addRow()"><i class="fas fa-plus"></i> Dodaj wiersz</button>
+        <button class="btn-tool" onclick="removeRow()"><i class="fas fa-minus"></i> Usuń ostatni</button>
+        <button class="btn-tool" id="btnUndo" onclick="undo()" disabled><i class="fas fa-undo"></i> Cofnij</button>
+        <button class="btn-tool" id="btnRedo" onclick="redo()" disabled><i class="fas fa-redo"></i> Ponów</button>
+        <button class="btn-tool" onclick="fillExample()"><i class="fas fa-magic"></i> Przykład</button>
+        <button class="btn-tool" onclick="clearAll()"><i class="fas fa-trash-alt"></i> Wyczyść</button>
+      </div>
+
+      <div class="paste-hint">
+        <i class="fas fa-paste"></i>
+        Wklej dane z Excela w formacie: <b>nazwa</b> + Tab + <b>liczba</b>. Możesz wkleić wiele wierszy naraz.
+      </div>
+
+      <div class="data-grid-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th style="width:60px;">#</th>
+              <th>Przyczyna / Problem</th>
+              <th style="width:130px;">Częstotliwość</th>
+              <th style="width:120px;">Akcja</th>
+            </tr>
+          </thead>
+          <tbody id="paretoBody"></tbody>
+        </table>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn-tool" onclick="sortRows()"><i class="fas fa-sort-amount-down"></i> Sortuj dane</button>
+        <button class="btn-tool" onclick="loadFromCSVText()"><i class="fas fa-file-import"></i> Wklej CSV/TXT</button>
+      </div>
+
+      <button class="btn-run" onclick="generatePareto()"><i class="fas fa-chart-column"></i> Generuj diagram Pareto</button>
+    </div>
+
+    <div class="glass-panel">
+      <div id="loadingIndicator" class="loader">
+        <i class="fas fa-cog fa-spin"></i>
+      </div>
+
+      <div id="placeholderArea" style="flex:1; display:flex; align-items:center; justify-content:center; color:#475569; text-align:center; min-height:420px;">
+        <div>
+          <i class="fas fa-chart-bar" style="font-size:5rem; margin-bottom:25px; opacity:.2;"></i>
+          <h2 style="font-size:1.8rem; margin-bottom:10px;">Brak danych do analizy</h2>
+          <p style="font-size:1.1rem;">Uzupełnij tabelę po lewej i kliknij „Generuj diagram Pareto”.</p>
+        </div>
+      </div>
+
+      <div id="resultsDashboard" class="results-dashboard">
+        <div class="panel-header">
+          <span><i class="fas fa-file-chart-column"></i> Raport Pareto</span>
+          <div class="btn-row" style="margin-top:0;">
+            <button class="btn-export" onclick="exportPNG()"><i class="fas fa-image"></i> PNG</button>
+            <button class="btn-export" onclick="window.print()"><i class="fas fa-print"></i> Drukuj / PDF</button>
+          </div>
+        </div>
+
+        <div class="report-meta">
+          <div><strong>Tytuł</strong><span class="meta-val" id="metaTitle">-</span></div>
+          <div><strong>Całkowita liczba</strong><span class="meta-val" id="metaTotal">-</span></div>
+          <div><strong>Liczba pozycji</strong><span class="meta-val" id="metaItems">-</span></div>
+          <div><strong>Próg 80%</strong><span class="meta-val" id="metaThreshold">-</span></div>
+          <div><strong>Pozycje do 80%</strong><span class="meta-val" id="metaFocusCount">-</span></div>
+          <div><strong>Udział top pozycji</strong><span class="meta-val" id="metaFocusShare">-</span></div>
+        </div>
+
+        <div class="kpi-grid">
+          <div class="kpi-card">
+            <div class="kpi-label">Największa pozycja</div>
+            <div class="kpi-value" id="kpiTop">-</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">Największy udział</div>
+            <div class="kpi-value" id="kpiTopPct">-</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">Pozycja graniczna 80%</div>
+            <div class="kpi-value" id="kpiBorder">-</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">Suma pozostałych</div>
+            <div class="kpi-value" id="kpiOther">-</div>
+          </div>
+        </div>
+
+        <div class="chart-wrapper">
+          <canvas id="paretoChart"></canvas>
+        </div>
+
+        <div class="subheader"><i class="fas fa-table"></i> Wyniki szczegółowe</div>
+        <table class="advanced-table">
+          <thead>
+            <tr>
+              <th style="text-align:left; padding-left:20px;">Pozycja</th>
+              <th>Częstotliwość</th>
+              <th>% udział</th>
+              <th>% kumulacyjnie</th>
+              <th>Status 80%</th>
+            </tr>
+          </thead>
+          <tbody id="resultTable"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let paretoChart = null;
+    let undoStack = [];
+    let redoStack = [];
+
+    function makeRow(name = "", value = "") {
+      return { name, value };
+    }
+
+    let rows = [
+      makeRow("Błąd operatora", 23),
+      makeRow("Awaria maszyny", 17),
+      makeRow("Brak materiału", 12),
+      makeRow("Błąd ustawień", 9),
+      makeRow("Problem jakościowy", 6),
+      makeRow("", "")
+    ];
+
+    function pushState() {
+      undoStack.push(JSON.stringify(rows));
+      if (undoStack.length > 100) undoStack.shift();
+      redoStack = [];
+      updateButtons();
+    }
+
+    function updateButtons() {
+      document.getElementById("btnUndo").disabled = undoStack.length <= 1;
+      document.getElementById("btnRedo").disabled = redoStack.length === 0;
+    }
+
+    function undo() {
+      if (undoStack.length <= 1) return;
+      redoStack.push(undoStack.pop());
+      rows = JSON.parse(undoStack[undoStack.length - 1]);
+      renderTable();
+      updateButtons();
+    }
+
+    function redo() {
+      if (redoStack.length === 0) return;
+      const next = redoStack.pop();
+      rows = JSON.parse(next);
+      undoStack.push(next);
+      renderTable();
+      updateButtons();
+    }
+
+    function renderTable() {
+      const body = document.getElementById("paretoBody");
+      body.innerHTML = "";
+      rows.forEach((row, i) => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td class="row-header">${i + 1}</td>
+          <td><input class="grid-cell" type="text" data-idx="${i}" data-field="name" value="${escapeHtml(row.name)}"></td>
+          <td><input class="grid-cell num-cell" type="number" min="0" step="1" data-idx="${i}" data-field="value" value="${row.value}"></td>
+          <td style="text-align:center;"><button class="btn-tool" style="margin:8px auto;" onclick="removeAt(${i})"><i class="fas fa-trash"></i></button></td>
+        `;
+        body.appendChild(tr);
+      });
+
+      document.querySelectorAll(".grid-cell").forEach(el => {
+        el.addEventListener("change", onCellChange);
+        el.addEventListener("paste", onPaste);
+      });
+    }
+
+    function onCellChange(e) {
+      const idx = Number(e.target.dataset.idx);
+      const field = e.target.dataset.field;
+      rows[idx][field] = field === "value" ? e.target.value : e.target.value;
+      pushState();
+    }
+
+    function onPaste(e) {
+      const text = (e.clipboardData || window.clipboardData).getData("text");
+      if (!text) return;
+      e.preventDefault();
+
+      const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+      if (!lines.length) return;
+
+      const target = e.target;
+      const startIdx = Number(target.dataset.idx || 0);
+      const startField = target.dataset.field || "name";
+
+      lines.forEach((line, offset) => {
+        const parts = line.split(/\t|;/).map(x => x.trim()).filter(Boolean);
+        const rowIndex = startIdx + offset;
+
+        if (!rows[rowIndex]) rows[rowIndex] = makeRow("", "");
+        if (parts.length >= 2) {
+          rows[rowIndex].name = parts[0];
+          rows[rowIndex].value = parts[1];
+        } else if (startField === "name") {
+          rows[rowIndex].name = parts[0];
+        } else {
+          rows[rowIndex].value = parts[0];
+        }
+      });
+
+      renderTable();
+      pushState();
+    }
+
+    function addRow() {
+      rows.push(makeRow("", ""));
+      renderTable();
+      pushState();
+    }
+
+    function removeRow() {
+      if (rows.length <= 1) return;
+      rows.pop();
+      renderTable();
+      pushState();
+    }
+
+    function removeAt(i) {
+      if (rows.length <= 1) return;
+      rows.splice(i, 1);
+      renderTable();
+      pushState();
+    }
+
+    function clearAll() {
+      rows = [makeRow("", "")];
+      renderTable();
+      pushState();
+    }
+
+    function fillExample() {
+      rows = [
+        makeRow("Błąd operatora", 45),
+        makeRow("Awaria maszyny", 28),
+        makeRow("Brak materiału", 18),
+        makeRow("Błąd ustawień", 11),
+        makeRow("Zła instrukcja", 7),
+        makeRow("Inne", 4)
+      ];
+      renderTable();
+      pushState();
+    }
+
+    function sortRows() {
+      const mode = document.getElementById("sortMode").value;
+      if (mode === "none") return;
+      rows.sort((a, b) => {
+        const av = Number(a.value) || 0;
+        const bv = Number(b.value) || 0;
+        return mode === "desc" ? bv - av : av - bv;
+      });
+      renderTable();
+      pushState();
+    }
+
+    function loadFromCSVText() {
+      const txt = prompt("Wklej dane w formacie: Przyczyna[TAB]Wartość, każdy wiersz w nowej linii");
+      if (!txt) return;
+      const lines = txt.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+      const newRows = [];
+      for (const line of lines) {
+        const parts = line.split(/\t|;/).map(x => x.trim()).filter(Boolean);
+        if (parts.length >= 2) {
+          newRows.push(makeRow(parts[0], parts[1]));
+        }
+      }
+      if (newRows.length) {
+        rows = newRows;
+        renderTable();
+        pushState();
+      }
+    }
+
+    function getData() {
+      return rows
+        .map(r => ({ name: String(r.name || "").trim(), value: Number(String(r.value).replace(",", ".")) || 0 }))
+        .filter(r => r.name && r.value > 0);
+    }
+
+    function generatePareto() {
+      const title = document.getElementById("chartTitle").value.trim() || "Diagram Pareto";
+      const axisLabel = document.getElementById("axisLabel").value.trim() || "Przyczyna / Problem";
+      const threshold = Math.max(1, Math.min(100, Number(document.getElementById("threshold80").value) || 80));
+      const topN = Math.max(1, Number(document.getElementById("topN").value) || 20);
+
+      let data = getData();
+      if (!data.length) return;
+
+      const sortMode = document.getElementById("sortMode").value;
+      if (sortMode === "desc") data.sort((a, b) => b.value - a.value);
+      if (sortMode === "asc") data.sort((a, b) => a.value - b.value);
+      data = data.slice(0, topN);
+
+      const total = data.reduce((s, x) => s + x.value, 0);
+      let cumulative = 0;
+
+      const labels = [];
+      const values = [];
+      const cumPct = [];
+      const pct = [];
+
+      data.forEach(item => {
+        labels.push(item.name);
+        values.push(item.value);
+        const p = total ? (item.value / total) * 100 : 0;
+        cumulative += p;
+        pct.push(p);
+        cumPct.push(cumulative);
+      });
+
+      const focusCount = cumPct.findIndex(v => v >= threshold) + 1 || data.length;
+      const focusShare = cumPct[Math.min(focusCount - 1, cumPct.length - 1)] || 0;
+      const borderLabel = labels[Math.min(focusCount - 1, labels.length - 1)] || "-";
+      const topItem = data[0];
+      const otherSum = data.slice(focusCount).reduce((s, x) => s + x.value, 0);
+
+      document.getElementById("placeholderArea").style.display = "none";
+      document.getElementById("resultsDashboard").style.display = "flex";
+
+      document.getElementById("metaTitle").innerText = title;
+      document.getElementById("metaTotal").innerText = total.toFixed(0);
+      document.getElementById("metaItems").innerText = data.length.toString();
+      document.getElementById("metaThreshold").innerText = threshold.toFixed(0) + "%";
+      document.getElementById("metaFocusCount").innerText = focusCount.toString();
+      document.getElementById("metaFocusShare").innerText = focusShare.toFixed(1) + "%";
+
+      document.getElementById("kpiTop").innerText = topItem ? topItem.name : "-";
+      document.getElementById("kpiTopPct").innerText = pct[0] ? pct[0].toFixed(1) + "%" : "-";
+      document.getElementById("kpiBorder").innerText = borderLabel;
+      document.getElementById("kpiOther").innerText = otherSum.toFixed(0);
+
+      const resultBody = document.getElementById("resultTable");
+      resultBody.innerHTML = "";
+      data.forEach((item, i) => {
+        const tr = document.createElement("tr");
+        const rowCum = cumPct[i];
+        const statusClass = rowCum <= threshold ? "status-ok" : (rowCum <= threshold + 5 ? "status-warn" : "status-err");
+        tr.innerHTML = `
+          <td class="row-title">${i + 1}. ${escapeHtml(item.name)}</td>
+          <td>${item.value.toFixed(0)}</td>
+          <td>${pct[i].toFixed(1)}%</td>
+          <td>${rowCum.toFixed(1)}%</td>
+          <td class="${statusClass}">${rowCum <= threshold ? "Priorytet" : "Niższy priorytet"}</td>
+        `;
+        resultBody.appendChild(tr);
+      });
+
+      const ctx = document.getElementById("paretoChart").getContext("2d");
+      if (paretoChart) paretoChart.destroy();
+
+      paretoChart = new Chart(ctx, {
+        data: {
+          labels,
+          datasets: [
+            {
+              type: "bar",
+              label: "Częstotliwość",
+              data: values,
+              backgroundColor: "rgba(0,174,239,0.75)",
+              borderColor: "#00AEEF",
+              borderWidth: 1,
+              yAxisID: "y"
+            },
+            {
+              type: "line",
+              label: "Kumulacja %",
+              data: cumPct,
+              borderColor: "#ef4444",
+              backgroundColor: "#ef4444",
+              tension: 0.25,
+              pointRadius: 5,
+              pointHoverRadius: 7,
+              yAxisID: "y1"
+            },
+            {
+              type: "line",
+              label: `${threshold}%`,
+              data: labels.map(() => threshold),
+              borderColor: "#10b981",
+              borderDash: [8, 6],
+              pointRadius: 0,
+              borderWidth: 2,
+              yAxisID: "y1"
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              labels: { color: "#f8fafc" }
+            },
+            title: {
+              display: true,
+              text: title,
+              color: "#f8fafc",
+              font: { size: 18, weight: "bold" }
+            }
+          },
+          scales: {
+            x: {
+              ticks: { color: "#cbd5e1" },
+              title: { display: true, text: axisLabel, color: "#cbd5e1" },
+              grid: { color: "rgba(255,255,255,0.05)" }
+            },
+            y: {
+              beginAtZero: true,
+              position: "left",
+              ticks: { color: "#cbd5e1" },
+              grid: { color: "rgba(255,255,255,0.1)" },
+              title: { display: true, text: "Częstotliwość", color: "#cbd5e1" }
+            },
+            y1: {
+              beginAtZero: true,
+              position: "right",
+              min: 0,
+              max: 100,
+              ticks: {
+                color: "#cbd5e1",
+                callback: v => v + "%"
+              },
+              grid: { drawOnChartArea: false },
+              title: { display: true, text: "Kumulacja %", color: "#cbd5e1" }
+            }
+          }
+        }
+      });
+    }
+
+    function exportPNG() {
+      const canvas = document.getElementById("paretoChart");
+      const a = document.createElement("a");
+      a.download = "pareto_diagram.png";
+      a.href = canvas.toDataURL("image/png");
+      a.click();
+    }
+
+    function escapeHtml(str) {
+      return String(str || "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    function init() {
+      renderTable();
+      pushState();
+    }
+
+    init();
+  </script>
+</body>
+</html>

@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AIAG & VDA PFMEA - Quality Hub</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #00AEEF;
+            --bg-dark: #0b1120;
+            --panel-bg: rgba(30, 41, 59, 0.85);
+            --border-color: rgba(255, 255, 255, 0.15);
+            --high: #ef4444; --med: #f59e0b; --low: #10b981;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
+        body { background-color: var(--bg-dark); color: #f8fafc; min-height: 100vh; }
+
+        .bg-layer { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: -2; background: url("{{ url_for('static', filename='images/batterySPC.png') }}") center/cover; filter: brightness(0.15); }
+        .overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: -1; background: linear-gradient(135deg, rgba(11,17,32,0.95) 0%, rgba(11,17,32,0.7) 100%); backdrop-filter: blur(10px); }
+
+        .navbar { height: 70px; display: flex; justify-content: space-between; align-items: center; padding: 0 40px; background: rgba(11, 17, 32, 0.95); border-bottom: 1px solid var(--border-color); position: sticky; top: 0; z-index: 100; }
+        .navbar-brand a { color: #fff; font-size: 1.4rem; font-weight: 800; text-decoration: none; display: flex; align-items: center; gap: 12px; }
+
+        .fmea-container { max-width: 100%; margin: 30px auto; padding: 0 20px; padding-bottom: 100px; }
+        .glass-panel { background: var(--panel-bg); border: 1px solid var(--border-color); border-radius: 16px; padding: 25px; box-shadow: 0 10px 40px rgba(0,0,0,0.5); }
+
+        .fmea-table-wrapper { overflow-x: auto; margin-top: 20px; border-radius: 12px; border: 1px solid var(--border-color); background: rgba(0,0,0,0.2); }
+        .fmea-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; min-width: 1600px; table-layout: fixed; }
+        .fmea-table th { background: rgba(0, 174, 239, 0.1); color: var(--primary); padding: 10px; border: 1px solid var(--border-color); font-size: 0.65rem; text-transform: uppercase; }
+        .fmea-table td { padding: 5px; border: 1px solid var(--border-color); vertical-align: top; background: rgba(0,0,0,0.1); }
+
+        .form-input { width: 100%; background: transparent; border: 1px solid transparent; color: #fff; padding: 5px; border-radius: 4px; outline: none; font-size: 0.8rem; resize: none; overflow: hidden; min-height: 45px; }
+        .form-input:focus { background: rgba(255,255,255,0.05); border-color: var(--primary); }
+
+        .score-input { width: 100%; text-align: center; font-weight: 800; color: var(--primary); border: none; background: none; font-size: 1rem; }
+
+        .ap-badge { padding: 4px; border-radius: 4px; font-weight: 900; text-align: center; font-size: 0.75rem; }
+        .ap-H { background: var(--high); color: #fff; }
+        .ap-M { background: var(--med); color: #000; }
+        .ap-L { background: var(--low); color: #fff; }
+
+        .btn-ai-row { background: var(--primary); color: #000; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-weight: 700; font-size: 0.65rem; margin-top: 5px; width: 100%; }
+        .btn-add { background: none; border: 1px solid var(--primary); color: var(--primary); padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 700; transition: 0.3s; }
+        .btn-add:hover { background: var(--primary); color: #000; }
+
+        /* Ukryty tekst do druku */
+        .print-text { display: none; white-space: pre-wrap; font-size: 0.75rem; color: #000; padding: 5px; }
+
+        .sticky-footer { position: fixed; bottom: 0; left: 0; width: 100%; background: rgba(11, 17, 32, 0.98); padding: 20px 50px; border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end; gap: 15px; z-index: 1000; }
+
+        @media print {
+            @page { size: landscape; margin: 8mm; }
+            body { background: #fff !important; color: #000 !important; }
+            .bg-layer, .overlay, .navbar, .sticky-footer, .btn-ai-row, .btn-add { display: none !important; }
+            .fmea-table {
+                min-width: 100% !important;
+                width: 100% !important;
+                table-layout: fixed !important;
+                border: 1px solid #000 !important;
+                zoom: 0.72;
+            }
+            .fmea-table th { background: #f2f2f2 !important; color: #000 !important; border: 1px solid #000 !important; font-size: 7pt !important; }
+            .fmea-table td { border: 1px solid #000 !important; background: #fff !important; }
+            .form-input { display: none !important; }
+            .print-text { display: block !important; }
+            .ap-badge { border: 1px solid #000; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        }
+
+        .loader { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.9); z-index: 2000; flex-direction: column; align-items: center; justify-content: center; }
+    </style>
+</head>
+<body>
+
+    <div id="loader" class="loader">
+        <div style="width: 60px; height: 60px; border: 6px solid rgba(255,255,255,0.1); border-top-color: var(--primary); border-radius: 50%; animation: spin 1s infinite linear;"></div>
+        <h2 style="color: #fff; margin-top: 25px;">Ekspert AI generuje analizę ryzyka...</h2>
+    </div>
+
+    <div class="bg-layer"></div>
+    <div class="overlay"></div>
+
+    <nav class="navbar">
+        <div class="navbar-brand">
+            <a href="/"><i class="fas fa-exclamation-triangle"></i> PFMEA Asystent (Standard AIAG & VDA)</a>
+        </div>
+        <a href="/" style="color: #94a3b8; text-decoration: none; font-weight: 600;">Wróć do Hubu</a>
+    </nav>
+
+    <div class="fmea-container">
+        <div class="glass-panel">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px;">
+                <h2>Arkusz Analizy Ryzyka PFMEA</h2>
+                <button class="btn-add" onclick="addRow()"><i class="fas fa-plus"></i> Dodaj nową operację</button>
+            </div>
+
+            <div class="fmea-table-wrapper">
+                <table class="fmea-table">
+                    <thead>
+                        <tr>
+                            <th rowspan="2" style="width: 8%;">Krok Procesu</th>
+                            <th rowspan="2" style="width: 8%;">Wymaganie</th>
+                            <th colspan="3" style="background: rgba(239, 68, 68, 0.1);">Analiza Błędu</th>
+                            <th colspan="2" style="background: rgba(245, 158, 11, 0.1);">Analiza Przyczyn</th>
+                            <th colspan="3" style="background: rgba(16, 185, 129, 0.1);">Środki Kontrolne</th>
+                            <th rowspan="2" style="width: 4%;">AP</th>
+                            <th rowspan="2" style="width: 10%;">Optymalizacja</th>
+                        </tr>
+                        <tr>
+                            <th style="width: 10%;">Tryb Błędu</th>
+                            <th style="width: 13%;">Skutek Błędu</th>
+                            <th style="width: 3%;">S</th>
+                            <th style="width: 13%;">Przyczyna</th>
+                            <th style="width: 3%;">O</th>
+                            <th style="width: 10%;">Prewencja</th>
+                            <th style="width: 10%;">Wykrywanie</th>
+                            <th style="width: 3%;">D</th>
+                        </tr>
+                    </thead>
+                    <tbody id="fmeaBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="sticky-footer">
+        <button class="btn-add" onclick="saveFmeaForCP()" style="background: #f59e0b; color: #000; border: none;">
+            <i class="fas fa-external-link-alt"></i> Eksportuj do Control Plan
+        </button>
+        <button class="btn-add" onclick="prepareAndPrint()"><i class="fas fa-file-pdf"></i> Generuj Raport PDF</button>
+        <button class="btn-add" style="background: var(--primary); color: #000; border: none;">Zapisz w Bazie</button>
+    </div>
+
+    <script>
+        let rowCount = 0;
+
+        function addRow(exampleData = null) {
+            rowCount++;
+            const tbody = document.getElementById('fmeaBody');
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>
+                    <textarea class="form-input op-val" placeholder="np. OP10...">${exampleData ? exampleData.op : ''}</textarea>
+                    <div class="print-text"></div>
+                    <button class="btn-ai-row" onclick="generateAI(${rowCount}, this)"><i class="fas fa-robot"></i> Podpowiedź AI</button>
+                </td>
+                <td><textarea class="form-input req-val">${exampleData ? exampleData.req : ''}</textarea><div class="print-text"></div></td>
+                <td><textarea class="form-input" id="fm-${rowCount}">${exampleData ? exampleData.fm : ''}</textarea><div class="print-text"></div></td>
+                <td><textarea class="form-input" id="fe-${rowCount}">${exampleData ? exampleData.fe : ''}</textarea><div class="print-text"></div></td>
+                <td><input type="number" class="score-input" id="s-${rowCount}" value="${exampleData ? exampleData.s : ''}" onchange="updateAP(${rowCount})"></td>
+                <td><textarea class="form-input" id="fc-${rowCount}">${exampleData ? exampleData.fc : ''}</textarea><div class="print-text"></div></td>
+                <td><input type="number" class="score-input" id="o-${rowCount}" value="${exampleData ? exampleData.o : ''}" onchange="updateAP(${rowCount})"></td>
+                <td><textarea class="form-input" id="cp-${rowCount}">${exampleData ? exampleData.cp : ''}</textarea><div class="print-text"></div></td>
+                <td><textarea class="form-input" id="cd-${rowCount}">${exampleData ? exampleData.cd : ''}</textarea><div class="print-text"></div></td>
+                <td><input type="number" class="score-input" id="d-${rowCount}" value="${exampleData ? exampleData.d : ''}" onchange="updateAP(${rowCount})"></td>
+                <td id="ap-${rowCount}" style="text-align:center;"><span class="ap-badge">-</span></td>
+                <td><textarea class="form-input">${exampleData ? exampleData.opt : ''}</textarea><div class="print-text"></div></td>
+            `;
+            tbody.appendChild(tr);
+            updateAP(rowCount, exampleData ? exampleData.ap : null);
+        }
+
+        const examples = [
+            {
+                op: "OP10 - Montaż ogniw w module",
+                req: "Prawidłowa polaryzacja i osadzenie ogniw",
+                fm: "Odwrotna polaryzacja ogniwa w slocie",
+                fe: "Pożar modułu / Thermal runaway podczas ładowania",
+                s: 10,
+                fc: "Błąd operatora / Zmęczenie materiału",
+                o: 3,
+                cp: "Poka-Yoke mechaniczne (kształt slotu)",
+                cd: "Automatyczny pomiar napięcia na każdym slocie",
+                d: 2,
+                ap: "H",
+                opt: "Wdrożenie wizyjnego systemu kontroli AI"
+            },
+            {
+                op: "OP20 - Zgrzewanie Busbarów",
+                req: "Głębokość wtopu > 0.5mm, brak odprysków",
+                fm: "Niewystarczający przetop (zimny zgrzew)",
+                fe: "Wzrost rezystancji, przegrzewanie pakietu",
+                s: 8,
+                fc: "Zanieczyszczenie optyki lasera",
+                o: 4,
+                cp: "Automatyczny cykl czyszczenia soczewki",
+                cd: "Badanie nieniszczące (Pull-test) na próbkach",
+                d: 5,
+                ap: "M",
+                opt: "Monitoring online parametrów wiązki lasera"
+            },
+            {
+                op: "OP30 - Test EOL (End of Line)",
+                req: "Wytrzymałość dielektryczna (Hi-Pot test)",
+                fm: "Przebicie izolacji wewnętrznej",
+                fe: "Porażenie prądem użytkownika końcowego",
+                s: 9,
+                fc: "Uszkodzenie izolacji przewodu przy montażu",
+                o: 2,
+                cp: "Osłony krawędzi obudowy (Edge protection)",
+                cd: "Automatyczny tester wysokiego napięcia",
+                d: 1,
+                ap: "L",
+                opt: "Brak - ryzyko akceptowalne"
+            }
+        ];
+
+        function loadExamples() {
+            examples.forEach(ex => addRow(ex));
+        }
+
+        async function generateAI(id, btn) {
+            const row = btn.closest('tr');
+            const op = row.querySelector('.op-val').value;
+            const req = row.querySelector('.req-val').value;
+            if(!op || !req) return alert("Uzupełnij nazwę operacji i wymaganie.");
+
+            document.getElementById('loader').style.display = 'flex';
+            try {
+                const res = await fetch('/api/generate_fmea', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ operation: op, requirement: req })
+                });
+                const d = await res.json();
+                document.getElementById(`fm-${id}`).value = d.failure_mode;
+                document.getElementById(`fe-${id}`).value = d.failure_effect;
+                document.getElementById(`s-${id}`).value = d.severity;
+                document.getElementById(`fc-${id}`).value = d.failure_cause;
+                document.getElementById(`o-${id}`).value = d.occurrence;
+                document.getElementById(`cp-${id}`).value = d.prevention_control;
+                document.getElementById(`cd-${id}`).value = d.detection_control;
+                document.getElementById(`d-${id}`).value = d.detection;
+                updateAP(id, d.action_priority);
+            } catch(e) { alert("Błąd AI."); }
+            finally { document.getElementById('loader').style.display = 'none'; }
+        }
+
+        function updateAP(id, forced = null) {
+            const s = parseInt(document.getElementById(`s-${id}`).value) || 0;
+            const o = parseInt(document.getElementById(`o-${id}`).value) || 0;
+            const d = parseInt(document.getElementById(`d-${id}`).value) || 0;
+            let ap = forced;
+            if(!ap && s && o && d) {
+                if(s >= 9 || (s >= 7 && o >= 4)) ap = "H";
+                else if(s >= 5 && o >= 2) ap = "M";
+                else ap = "L";
+            }
+            const badge = document.getElementById(`ap-${id}`);
+            if(ap === "H") badge.innerHTML = `<span class="ap-badge ap-H">H</span>`;
+            else if(ap === "M") badge.innerHTML = `<span class="ap-badge ap-M">M</span>`;
+            else if(ap === "L") badge.innerHTML = `<span class="ap-badge ap-L">L</span>`;
+            else badge.innerHTML = `<span class="ap-badge">-</span>`;
+        }
+
+        function prepareAndPrint() {
+            document.querySelectorAll('tr').forEach(tr => {
+                tr.querySelectorAll('td').forEach(td => {
+                    const txt = td.querySelector('textarea');
+                    const prnt = td.querySelector('.print-text');
+                    if(txt && prnt) prnt.innerText = txt.value;
+                });
+            });
+            window.print();
+        }
+
+        function saveFmeaForCP() {
+            let rows = [];
+            document.querySelectorAll('#fmeaBody tr').forEach(tr => {
+                const op = tr.querySelector('.op-val').value;
+                const req = tr.querySelector('.req-val').value;
+                if(op && req) rows.push({ op, req });
+            });
+            localStorage.setItem('last_pfmea', JSON.stringify(rows));
+            alert("Dane wyeksportowane do Control Plan!");
+        }
+
+        window.onload = loadExamples;
+    </script>
+</body>
+</html>

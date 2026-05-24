@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BMZ Quality Hub</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --primary: #00AEEF;
+            --primary-glow: rgba(0, 174, 239, 0.6);
+            --bg-dark: #0b1120;
+            --text-main: #f8fafc;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            min-height: 100vh;
+            overflow-x: hidden;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        /* === 1. KULOODPORNE TŁO === */
+        .background-layer {
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            z-index: -3;
+        }
+        .bg-slide {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            opacity: 0;
+            animation: slideAnimation 15s infinite;
+        }
+        .bg-slide:nth-child(1) { background-image: url("{{ url_for('static', filename='images/battery1.png') }}"); animation-delay: 0s; }
+        .bg-slide:nth-child(2) { background-image: url("{{ url_for('static', filename='images/battery2.png') }}"); animation-delay: -10s; }
+        .bg-slide:nth-child(3) { background-image: url("{{ url_for('static', filename='images/battery3.png') }}"); animation-delay: -5s; }
+
+        @keyframes slideAnimation {
+            0%   { opacity: 0; transform: scale(1); }
+            12%  { opacity: 0.5; transform: scale(1.02); }
+            33%  { opacity: 0.5; transform: scale(1.05); }
+            45%  { opacity: 0; transform: scale(1.07); }
+            100% { opacity: 0; transform: scale(1.1); }
+        }
+
+        .overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            background: radial-gradient(circle at center, rgba(11, 17, 32, 0.4) 0%, rgba(5, 8, 15, 0.95) 100%);
+            z-index: -2;
+        }
+
+        #particles-container {
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            z-index: -1;
+            pointer-events: none;
+        }
+        .particle {
+            position: absolute;
+            background: white; border-radius: 50%; opacity: 0;
+            animation: flicker infinite ease-in-out;
+        }
+        @keyframes flicker {
+            0%, 100% { opacity: 0; transform: scale(0.5); }
+            50% { opacity: 0.7; transform: scale(1.5); box-shadow: 0 0 10px white; }
+        }
+
+        /* === 2. NAVBAR === */
+        .navbar {
+            position: fixed; top: 0; left: 0; width: 100%; height: 120px;
+            background: linear-gradient(to bottom, rgba(11, 17, 32, 0.95) 0%, rgba(11, 17, 32, 0) 100%);
+            z-index: 1000; display: flex; justify-content: center; align-items: flex-start; padding-top: 30px; pointer-events: none;
+        }
+        .navbar-links { pointer-events: auto; display: flex; gap: 60px; }
+        .navbar-links a {
+            color: #e2e8f0; text-decoration: none; font-size: 1.4rem; font-weight: 600;
+            transition: 0.3s; display: flex; align-items: center; gap: 12px;
+        }
+        .navbar-links a:hover { color: var(--primary); text-shadow: 0 0 15px var(--primary-glow); transform: translateY(-2px); }
+
+        /* === 3. ZAWARTOŚĆ STRONY === */
+        .content-layer {
+            position: relative; z-index: 10; width: 100%; display: flex; flex-direction: column; align-items: center;
+        }
+
+        header {
+            text-align: center;
+            margin-top: 220px;
+            margin-bottom: 50px;
+        }
+        header h1 {
+            font-size: 4.8rem;
+            font-weight: 800;
+            text-shadow: 0 0 40px var(--primary-glow), 0 5px 20px rgba(0,0,0,0.9);
+            letter-spacing: -1px;
+        }
+        header p {
+            color: #94a3b8;
+            margin-top: 15px;
+            font-size: 1.4rem;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.8);
+        }
+
+        /* === 4. WACHLARZ KART (9 MODUŁÓW) === */
+        .cards-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 650px;
+            perspective: 1500px;
+            margin-bottom: 150px;
+        }
+        .cards-container:hover .module-card { filter: brightness(0.5) blur(3px); }
+
+        .module-card {
+            flex-shrink: 0;
+            position: relative;
+            width: 420px;
+            height: 620px;
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 30px;
+            margin-left: -240px;
+            transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+            display: flex;
+            flex-direction: column;
+            padding: 45px 25px;
+            text-align: center;
+            box-shadow: -15px 15px 40px rgba(0,0,0,0.6);
+            cursor: pointer;
+            text-decoration: none;
+            color: white;
+        }
+        .module-card:first-child { margin-left: 0; }
+
+        .module-card:nth-child(1) { transform: rotate(-24deg) translateY(100px); z-index: 1; }
+        .module-card:nth-child(2) { transform: rotate(-18deg) translateY(60px);  z-index: 2; }
+        .module-card:nth-child(3) { transform: rotate(-12deg) translateY(30px);  z-index: 3; }
+        .module-card:nth-child(4) { transform: rotate(-6deg)  translateY(10px);  z-index: 4; }
+        .module-card:nth-child(5) { transform: rotate(0deg)   translateY(0px);   z-index: 5; }
+        .module-card:nth-child(6) { transform: rotate(6deg)   translateY(10px);  z-index: 6; }
+        .module-card:nth-child(7) { transform: rotate(12deg)  translateY(30px);  z-index: 7; }
+        .module-card:nth-child(8) { transform: rotate(18deg)  translateY(60px);  z-index: 8; }
+        .module-card:nth-child(9) { transform: rotate(24deg)  translateY(100px); z-index: 9; }
+
+        .module-card:hover {
+            transform: translateY(-110px) rotate(0deg) scale(1.06) !important;
+            z-index: 100 !important;
+            background: rgba(15, 23, 42, 0.98);
+            border-color: var(--primary);
+            box-shadow: 0 30px 70px rgba(0, 174, 239, 0.5);
+            filter: brightness(1.1) blur(0px) !important;
+        }
+
+        .module-card:hover ~ .module-card { margin-left: -150px; }
+
+        .card-icon {
+            font-size: 5.5rem;
+            color: var(--primary);
+            margin-bottom: 25px;
+            filter: drop-shadow(0 0 15px var(--primary-glow));
+        }
+        .module-card:hover .card-icon { transform: scale(1.1); }
+
+        .card-title { font-size: 1.8rem; font-weight: 700; margin-bottom: 15px; }
+        .card-desc { font-size: 1rem; color: #94a3b8; line-height: 1.5; }
+
+        .btn-enter {
+            margin-top: auto;
+            padding: 15px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 1.1rem;
+            transition: 0.3s;
+        }
+        .module-card:hover .btn-enter { background: var(--primary); color: black; }
+
+        /* === 5. CHATBOT === */
+        .chatbot-widget { position: fixed; bottom: 30px; right: 30px; z-index: 2000; }
+        .chatbot-btn {
+            width: 70px; height: 70px; background: var(--primary);
+            border-radius: 50%; display: flex; justify-content: center; align-items: center;
+            color: black; font-size: 2rem; cursor: pointer; border: none;
+            box-shadow: 0 5px 25px rgba(0, 174, 239, 0.5); animation: pulse-bot 2s infinite;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="background-layer">
+        <div class="background-slider">
+            <div class="bg-slide"></div>
+            <div class="bg-slide"></div>
+            <div class="bg-slide"></div>
+        </div>
+        <div class="overlay"></div>
+        <div id="particles-container"></div>
+    </div>
+
+    <nav class="navbar">
+        <div class="navbar-links">
+            <!-- Link do AIAG news -->
+            <a href="https://www.aiag.org/news" target="_blank"><i class="fas fa-newspaper"></i> Nowości</a>
+            <a href="/baza-wiedzy"><i class="fas fa-book-open"></i> Baza Wiedzy</a>
+            <!-- Link do trasy /kontakt -->
+            <a href="/kontakt"><i class="fas fa-envelope"></i> Kontakt</a>
+        </div>
+    </nav>
+
+    <div class="content-layer">
+        <header>
+            <h1>Quality Control Hub</h1>
+            <p>Zaawansowane narzędzia inżynierskie dla produkcji systemów bateryjnych</p>
+        </header>
+
+        <div class="cards-container">
+            {% set all_modules = modules1 + modules2 %}
+            {% for mod in all_modules %}
+            <a href="/module/{{ mod.id }}" class="module-card">
+                <div class="card-icon"><i class="fas {{ mod.icon }}"></i></div>
+                <div class="card-title">{{ mod.title }}</div>
+                <div class="card-desc">{{ mod.desc }}</div>
+                <div class="btn-enter">Otwórz moduł</div>
+            </a>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="chatbot-widget" onclick="alert('Cześć! Asystent AI BMZ jest do Twojej dyspozycji.')">
+        <button class="chatbot-btn"><i class="fas fa-robot"></i></button>
+    </div>
+
+    <script>
+        function initParticles() {
+            const container = document.getElementById('particles-container');
+            for(let i = 0; i < 70; i++) {
+                const p = document.createElement('div');
+                p.className = 'particle';
+                const size = Math.random() * 3 + 1;
+                p.style.width = p.style.height = size + 'px';
+                p.style.left = Math.random() * 100 + 'vw';
+                p.style.top = Math.random() * 100 + 'vh';
+                p.style.animationDuration = (Math.random() * 4 + 2) + 's';
+                p.style.animationDelay = Math.random() * 5 + 's';
+                container.appendChild(p);
+            }
+        }
+        window.onload = initParticles;
+    </script>
+</body>
+</html>

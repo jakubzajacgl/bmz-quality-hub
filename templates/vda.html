@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VDA 6.3 P6 Professional Audit - Quality Hub</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #00AEEF;
+            --primary-glow: rgba(0, 174, 239, 0.5);
+            --bg-dark: #0b1120;
+            --text-main: #f8fafc;
+            --panel-bg: rgba(30, 41, 59, 0.9);
+            --border-color: rgba(255, 255, 255, 0.15);
+            --vda-a: #10b981;
+            --vda-b: #f59e0b;
+            --vda-c: #ef4444;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
+        body { background-color: var(--bg-dark); color: var(--text-main); min-height: 100vh; line-height: 1.5; }
+
+        .bg-layer { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: -2; background: url("{{ url_for('static', filename='images/batterySPC.png') }}") center/cover; filter: brightness(0.15); }
+        .overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: -1; background: linear-gradient(135deg, rgba(11,17,32,0.95) 0%, rgba(11,17,32,0.7) 100%); backdrop-filter: blur(10px); }
+
+        .navbar { height: 70px; display: flex; justify-content: space-between; align-items: center; padding: 0 40px; background: rgba(11, 17, 32, 0.95); border-bottom: 1px solid var(--border-color); position: sticky; top: 0; z-index: 100; }
+        .navbar-brand a { color: #fff; font-size: 1.4rem; font-weight: 800; text-decoration: none; display: flex; align-items: center; gap: 12px; }
+        .navbar-brand i { color: var(--primary); }
+
+        .audit-container { max-width: 1500px; margin: 30px auto; padding: 0 20px; padding-bottom: 150px; }
+
+        /* Dashboard wyników */
+        .glass-panel { background: var(--panel-bg); border: 1px solid var(--border-color); border-radius: 16px; padding: 30px; margin-bottom: 25px; box-shadow: 0 20px 50px rgba(0,0,0,0.5); }
+        .score-dashboard { display: grid; grid-template-columns: 1fr 2fr; gap: 40px; align-items: center; }
+        .main-result { text-align: center; padding: 20px; border-right: 1px solid var(--border-color); }
+        .percent-val { font-size: 5rem; font-weight: 900; color: var(--primary); display: block; line-height: 1; }
+        .classification { font-size: 1.2rem; font-weight: 800; padding: 10px 25px; border-radius: 50px; display: inline-block; margin-top: 15px; text-transform: uppercase; }
+
+        .sub-scores { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; }
+        .sub-card { background: rgba(0,0,0,0.3); padding: 15px; border-radius: 12px; border: 1px solid var(--border-color); text-align: center; }
+        .sub-card span { font-size: 0.75rem; color: #94a3b8; font-weight: 700; }
+        .sub-card strong { font-size: 1.4rem; color: #fff; display: block; margin-top: 5px; }
+
+        /* Meta sekcja */
+        .grid-meta { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 25px; margin-top: 30px; }
+        .form-group label { display: block; font-size: 0.75rem; color: var(--primary); text-transform: uppercase; margin-bottom: 8px; font-weight: 800; letter-spacing: 1px; }
+        .form-control { width: 100%; background: rgba(0,0,0,0.5); border: 1px solid var(--border-color); color: #fff; padding: 14px; border-radius: 10px; outline: none; transition: 0.3s; font-size: 1rem; }
+        .form-control:focus { border-color: var(--primary); box-shadow: 0 0 15px var(--primary-glow); }
+
+        /* Sekcje P6 */
+        .p6-header { background: linear-gradient(90deg, var(--primary), rgba(0, 174, 239, 0.1)); padding: 15px 30px; border-radius: 10px; font-weight: 900; font-size: 1.2rem; margin: 50px 0 20px 0; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
+
+        .question-card { background: rgba(30, 41, 59, 0.7); border: 1px solid var(--border-color); border-radius: 16px; padding: 30px; margin-bottom: 25px; transition: 0.3s; }
+        .question-card:hover { border-color: var(--primary); transform: translateY(-2px); }
+
+        .q-header { margin-bottom: 20px; }
+        .q-num { background: var(--primary); color: #000; font-weight: 900; padding: 5px 12px; border-radius: 6px; margin-right: 15px; font-size: 1.1rem; }
+        .q-text { font-size: 1.2rem; font-weight: 700; color: #fff; display: inline-block; vertical-align: middle; }
+        .q-desc { display: block; margin-top: 10px; font-size: 0.95rem; color: #94a3b8; line-height: 1.6; padding-left: 5px; border-left: 3px solid var(--primary); padding-left: 15px; }
+
+        /* Punktacja */
+        .score-buttons { display: flex; gap: 10px; margin: 25px 0; }
+        .btn-score { flex: 1; padding: 15px; border-radius: 10px; border: 1px solid var(--border-color); background: rgba(0,0,0,0.4); color: #94a3b8; cursor: pointer; font-weight: 800; font-size: 1.1rem; transition: 0.2s; }
+        .btn-score:hover { background: rgba(255,255,255,0.1); color: #fff; }
+        .btn-score.active[data-val="10"] { background: #10b981; color: #000; border-color: #10b981; box-shadow: 0 0 20px rgba(16,185,129,0.4); }
+        .btn-score.active[data-val="8"] { background: #84cc16; color: #000; }
+        .btn-score.active[data-val="6"] { background: #f59e0b; color: #000; }
+        .btn-score.active[data-val="4"] { background: #f97316; color: #000; }
+        .btn-score.active[data-val="0"] { background: #ef4444; color: #fff; }
+        .btn-score.active[data-val="na"] { background: #64748b; color: #fff; }
+
+        /* SZYBKI WYBÓR PRZYKŁADÓW */
+        .example-selector { margin-bottom: 15px; }
+        .example-label { font-size: 0.7rem; color: var(--primary); font-weight: 800; text-transform: uppercase; margin-bottom: 8px; display: block; }
+        .example-tags { display: flex; flex-wrap: wrap; gap: 8px; }
+        .tag { background: rgba(0, 174, 239, 0.1); border: 1px solid rgba(0, 174, 239, 0.3); color: #00AEEF; padding: 6px 12px; border-radius: 6px; font-size: 0.8rem; cursor: pointer; transition: 0.2s; font-weight: 600; }
+        .tag:hover { background: var(--primary); color: #000; }
+
+        .findings-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 25px; }
+        .audit-notes { width: 100%; background: rgba(0,0,0,0.4); border: 1px solid var(--border-color); border-radius: 10px; color: #cbd5e1; padding: 15px; font-size: 0.95rem; min-height: 120px; resize: none; line-height: 1.5; }
+
+        .ai-btn { margin-top: 10px; background: none; border: none; color: var(--primary); font-weight: 700; cursor: pointer; font-size: 0.85rem; display: flex; align-items: center; gap: 6px; }
+
+        /* AI SUMMARY PANEL */
+        #aiSummaryPanel { display: none; background: rgba(0, 174, 239, 0.15); border-left: 6px solid var(--primary); padding: 35px; border-radius: 0 20px 20px 0; margin-bottom: 50px; animation: slideDown 0.5s ease; }
+        @keyframes slideDown { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Sticky Footer */
+        .audit-footer { position: fixed; bottom: 0; left: 0; width: 100%; background: rgba(11, 17, 32, 0.98); padding: 25px 50px; border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end; gap: 20px; backdrop-filter: blur(15px); z-index: 1000; }
+        .btn-main { background: var(--primary); color: #000; border: none; padding: 15px 40px; border-radius: 10px; font-weight: 900; cursor: pointer; text-transform: uppercase; letter-spacing: 1px; transition: 0.3s; }
+        .btn-main:hover { transform: translateY(-4px); box-shadow: 0 10px 30px var(--primary-glow); }
+
+        #loader { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.9); z-index: 2000; align-items: center; justify-content: center; flex-direction: column; }
+        .spin { width: 80px; height: 80px; border: 8px solid rgba(0, 174, 239, 0.1); border-top-color: var(--primary); border-radius: 50%; animation: rotation 1s infinite linear; }
+        @keyframes rotation { to { transform: rotate(360deg); } }
+
+        @media print {
+            .navbar, .audit-footer, .tag, .ai-btn, .example-label, .score-buttons button:not(.active), #loader { display: none !important; }
+            body { background: #fff; color: #000; }
+            .bg-layer, .overlay { display: none; }
+            .audit-container { padding: 0; margin: 0; width: 100%; max-width: 100%; }
+            .glass-panel, .question-card, #aiSummaryPanel { border: 2px solid #000 !important; background: #fff !important; color: #000 !important; box-shadow: none !important; break-inside: avoid; margin-bottom: 20px; }
+            .q-text, .q-desc, .audit-notes { color: #000 !important; }
+            .classification { border: 2px solid #000 !important; color: #000 !important; }
+        }
+    </style>
+</head>
+<body>
+    <div id="loader">
+        <div class="spin"></div>
+        <h1 style="color: #fff; margin-top: 30px;">Analiza AI w toku...</h1>
+        <p style="color: #94a3b8;">Llama 3.3 generuje podsumowanie ryzyk procesowych.</p>
+    </div>
+
+    <div class="bg-layer"></div>
+    <div class="overlay"></div>
+
+    <nav class="navbar">
+        <div class="navbar-brand">
+            <a href="/"><i class="fas fa-shield-virus"></i> VDA 6.3 P6: Analiza Procesu Produkcyjnego</a>
+        </div>
+        <a href="/" style="color: #94a3b8; text-decoration: none; font-weight: 600;">Wyjdź bez zapisywania</a>
+    </nav>
+
+    <div class="audit-container">
+        <!-- Dashboard Wyników -->
+        <div class="glass-panel score-dashboard">
+            <div class="main-result">
+                <span style="font-weight: 700; color: #94a3b8; text-transform: uppercase;">Zgodność Ogólna E<sub>P6</sub></span>
+                <strong class="percent-val" id="totalPct">0%</strong>
+                <div class="classification" id="auditClass">BRAK OCENY</div>
+            </div>
+            <div class="sub-scores" id="subScoresGrid"></div>
+        </div>
+
+        <!-- Meta dane -->
+        <div class="glass-panel grid-meta">
+            <div class="form-group"><label>Linia Produkcyjna</label><input type="text" id="mLine" class="form-control" value="BU Produkcja Baterii - Linia 04"></div>
+            <div class="form-group"><label>Jednostka Audytowana</label><input type="text" id="mUnit" class="form-control" value="Wydział Montażu Końcowego"></div>
+            <div class="form-group"><label>Audytor prowadzący</label><input type="text" id="mAuditor" class="form-control" placeholder="Imię i Nazwisko"></div>
+            <div class="form-group"><label>Data Audytu</label><input type="date" id="mDate" class="form-control"></div>
+        </div>
+
+        <!-- AI Panel -->
+        <div id="aiSummaryPanel">
+            <h2 style="color: var(--primary); margin-bottom: 15px;"><i class="fas fa-brain"></i> Raport Końcowy AI Groq</h2>
+            <div id="aiVerdict" style="font-weight: 900; font-size: 1.4rem; color: #fff; margin-bottom: 15px;"></div>
+            <p id="aiSummary" style="color: #cbd5e1; line-height: 1.8; font-size: 1.1rem; margin-bottom: 25px;"></p>
+            <div style="background: rgba(255,255,255,0.05); padding: 20px; border-radius: 10px;">
+                <h4 style="color: var(--primary); margin-bottom: 15px;">Zalecane Priorytety (Top 3):</h4>
+                <ul id="aiTopActions" style="margin-left: 20px; line-height: 2;"></ul>
+            </div>
+        </div>
+
+        <div id="questionsContent"></div>
+    </div>
+
+    <div class="audit-footer">
+        <button class="btn-main" style="background: transparent; border: 2px solid var(--primary); color: var(--primary);" onclick="window.print()"><i class="fas fa-file-pdf"></i> Generuj PDF</button>
+        <button class="btn-main" id="btnFinal" onclick="submitAudit()">Zakończ Audyt i Analizuj przez AI</button>
+    </div>
+
+    <script>
+        const vda63P6 = [
+            {
+                code: "P6.1", title: "Wejście do procesu (Process Input)",
+                questions: [
+                    {
+                        id: "6.1.1",
+                        q: "Czy nastąpiło przekazanie projektu z rozwoju do produkcji?",
+                        desc: "Wymagane jest formalne przekazanie projektu (Handover). Należy sprawdzić status zatwierdzenia procesów i wyrobów (PPAP/VDA2), dostępność dokumentacji projektowej i logistycznej.",
+                        examples: ["Brak protokołu przekazania projektu (Handover).", "Dokumentacja PPAP niekompletna.", "Brak zatwierdzonych wzorców limitowych na stanowisku.", "Status serii próbnej niezamknięty."]
+                    },
+                    {
+                        id: "6.1.2",
+                        q: "Czy materiały produkcyjne są dostępne w określonym czasie i ilości?",
+                        desc: "Należy zweryfikować dostępność komponentów, planowanie dostaw wewnętrznych (Kanban/Milkrun) oraz system identyfikacji materiałów.",
+                        examples: ["Błędy w systemie FIFO w magazynie przyprodukcyjnym.", "Brak oznakowania statusu kontroli na paletach.", "Przerwanie ciągłości dostaw komponentów.", "Brak zabezpieczenia przed zmieszaniem części."]
+                    },
+                    {
+                        id: "6.1.3",
+                        q: "Czy materiały są przechowywane i transportowane zgodnie z wymaganiami?",
+                        desc: "Weryfikacja warunków przechowywania (wilgotność, temperatura), czystości opakowań, ochrony przed uszkodzeniami i ESD.",
+                        examples: ["Brak ochrony ESD dla wrażliwych komponentów.", "Uszkodzone opakowania transportowe.", "Przekroczone terminy przydatności (Shelf-life).", "Magazynowanie bezpośrednio na podłodze (brak palet)."]
+                    }
+                ]
+            },
+            {
+                code: "P6.2", title: "Operacje procesowe (Process Tasks)",
+                questions: [
+                    {
+                        id: "6.2.1",
+                        q: "Czy plany kontroli i instrukcje robocze są dostępne na stanowiskach?",
+                        desc: "Wszystkie instrukcje muszą być aktualne, zrozumiałe i dostępne w punkcie użycia. Należy sprawdzić zgodność z Planem Kontroli (Control Plan).",
+                        examples: ["Instrukcja robocza w nieaktualnej rewizji.", "Brak Planu Kontroli na stanowisku.", "Instrukcja napisana w języku niezrozumiałym dla operatora.", "Parametry procesu na maszynie niezgodne z instrukcją."]
+                    },
+                    {
+                        id: "6.2.2",
+                        q: "Czy przeprowadza się i dokumentuje zatwierdzenia rozpoczęcia produkcji?",
+                        desc: "Weryfikacja procesu 'First Piece Inspection'. Czy po przezbrojeniu lub przerwie następuje formalne zwolnienie procesu?",
+                        examples: ["Brak wpisu o zwolnieniu produkcji (Setup Approval).", "Pierwsza sztuka nie została zweryfikowana przez KJ.", "Narzędzia nie zostały sprawdzone przed montażem.", "Brak checklisty startowej dla maszyny."]
+                    },
+                    {
+                        id: "6.2.3",
+                        q: "Czy charakterystyki specjalne są monitorowane i dokumentowane?",
+                        desc: "Weryfikacja parametrów krytycznych (SC/CC). Czy stosowane są karty SPC? Czy zdolność procesu (Cpk) jest monitorowana?",
+                        examples: ["Karta SPC nie jest prowadzona na bieżąco.", "Przekroczone granice kontrolne bez reakcji operatora.", "Brak identyfikacji CC na instrukcji stanowiskowej.", "Zdolność procesu Cpk < 1.33 bez planu działań."]
+                    },
+                    {
+                        id: "6.2.4",
+                        q: "Czy części niezgodne i podejrzane są identyfikowane i izolowane?",
+                        desc: "Weryfikacja systemu brakowania. Czy istnieją czerwone kosze? Czy są one zamknięte? Czy proces napraw (rework) jest zatwierdzony?",
+                        examples: ["Czerwony kosz na braki jest otwarty.", "Części NOK znalezione w pojemniku z dobrymi sztukami.", "Brak instrukcji procesu naprawy (Rework instruction).", "Brak identyfikacji 'Quarantine' na izolowanych paletach."]
+                    }
+                ]
+            },
+            {
+                code: "P6.3", title: "Zasoby ludzkie (Personnel Resources)",
+                questions: [
+                    {
+                        id: "6.3.1",
+                        q: "Czy pracownicy posiadają wymagane kwalifikacje do zadań?",
+                        desc: "Należy sprawdzić macierz kompetencji, certyfikaty szkoleniowe (np. lutowanie, suwnice) oraz instruktaże stanowiskowe.",
+                        examples: ["Operator nie posiada certyfikatu na dane stanowisko.", "Macierz kompetencji nie była aktualizowana od roku.", "Brak podpisanego szkolenia BHP dla nowego pracownika.", "Brak uprawnień do obsługi testera końcowego."]
+                    },
+                    {
+                        id: "6.3.2",
+                        q: "Czy pracownicy znają swoje odpowiedzialności i uprawnienia?",
+                        desc: "Czy operator wie, kiedy może zatrzymać linię? Czy zna cele jakościowe i wie, komu zgłaszać problemy?",
+                        examples: ["Operator nie wie, jak zareagować na błąd maszyny.", "Brak znajomości celów jakościowych (PPM).", "Pracownik nie wie, kto jest jego liderem jakości.", "Brak uprawnienia do zatrzymania produkcji (Andon)."]
+                    }
+                ]
+            },
+            {
+                code: "P6.4", title: "Zasoby materialne / Infrastruktura",
+                questions: [
+                    {
+                        id: "6.4.1",
+                        q: "Czy urządzenia produkcyjne i oprzyrządowanie są zdolne i konserwowane?",
+                        desc: "Weryfikacja harmonogramu konserwacji (TPM). Czy maszyny są w dobrym stanie technicznym? Czy monitoruje się przestoje?",
+                        examples: ["Brak wpisów w karcie przeglądów maszyny.", "Wycieki oleju z agregatu hydraulicznego.", "Narzędzie (forma) jest uszkodzone i wymaga regeneracji.", "Brak części zamiennych do kluczowych urządzeń."]
+                    },
+                    {
+                        id: "6.4.2",
+                        q: "Czy systemy pomiarowe i testowe są zdolne i kalibrowane?",
+                        desc: "Weryfikacja ważności kalibracji (naklejki). Czy przeprowadzono analizy MSA (GR&R)?",
+                        examples: ["Suwmiarka po terminie kalibracji.", "Brak raportu MSA dla kluczowego sprawdzianu.", "Tester funkcjonalny nie posiada master-partów do weryfikacji.", "Brak identyfikacji urządzenia w systemie metrologicznym."]
+                    }
+                ]
+            },
+            {
+                code: "P6.5", title: "Efektywność i skuteczność procesu",
+                questions: [
+                    {
+                        id: "6.5.1",
+                        q: "Czy cele operacyjne (KPI) są monitorowane w procesie?",
+                        desc: "Weryfikacja wizualizacji wyników (OEE, Scrap, Downtime). Czy dane są zbierane w czasie rzeczywistym?",
+                        examples: ["Brak aktualnych wykresów wydajności na tablicy liderskiej.", "Dane o brakach zbierane z tygodniowym opóźnieniem.", "Cele KPI są nierealistyczne lub nieznane załodze.", "Brak monitorowania trendów jakościowych."]
+                    }
+                ]
+            },
+            {
+                code: "P6.6", title: "Wyjście z procesu (Output)",
+                questions: [
+                    {
+                        id: "6.6.1",
+                        q: "Czy produkty są pakowane i etykietowane zgodnie z wymaganiami?",
+                        desc: "Weryfikacja czystości opakowań, poprawności etykiet (Master-label) i zabezpieczenia logistycznego.",
+                        examples: ["Etykieta logistyczna zawiera błędny numer części.", "Części pakowane w brudne, uszkodzone pojemniki.", "Brak zabezpieczenia antykorozyjnego (VCI).", "Błędna ilość sztuk w opakowaniu zbiorczym."]
+                    }
+                ]
+            }
+        ];
+
+        let auditState = {};
+
+        function buildAudit() {
+            document.getElementById('mDate').valueAsDate = new Date();
+            const container = document.getElementById('questionsContent');
+            const subGrid = document.getElementById('subScoresGrid');
+
+            vda63P6.forEach(section => {
+                subGrid.innerHTML += `
+                    <div class="sub-card">
+                        <span>${section.code}</span>
+                        <strong id="res-${section.code}">0%</strong>
+                    </div>
+                `;
+
+                let secHtml = `
+                    <div class="p6-header">
+                        <span>${section.code}: ${section.title}</span>
+                        <span id="score-${section.code}" style="font-size: 0.9rem; opacity: 0.8;">0/0 PKT</span>
+                    </div>
+                `;
+
+                section.questions.forEach(q => {
+                    secHtml += `
+                        <div class="question-card" data-qid="${q.id}">
+                            <div class="q-header">
+                                <span class="q-num">${q.id}</span>
+                                <span class="q-text">${q.q}</span>
+                                <div class="q-desc">${q.desc}</div>
+                            </div>
+
+                            <div class="score-buttons">
+                                ${[10, 8, 6, 4, 0, 'na'].map(v => `<button class="btn-score" data-val="${v}" onclick="updateScore('${q.id}', '${v}')">${v}</button>`).join('')}
+                            </div>
+
+                            <div class="example-selector">
+                                <span class="example-label">Szybki wybór dowodów / spostrzeżeń:</span>
+                                <div class="example-tags">
+                                    ${q.examples.map(ex => `<div class="tag" onclick="injectExample('${q.id}', '${ex}')">${ex}</div>`).join('')}
+                                </div>
+                            </div>
+
+                            <div class="findings-grid">
+                                <div>
+                                    <label class="example-label">Spostrzeżenia / Obserwacje / Dowody:</label>
+                                    <textarea class="audit-notes" id="find-${q.id}" placeholder="Wpisz dowody audytowe..."></textarea>
+                                    <button class="ai-btn" onclick="improveText('${q.id}')"><i class="fas fa-magic"></i> Profesjonalny język (AI)</button>
+                                </div>
+                                <div>
+                                    <label class="example-label">Wymagane Działania:</label>
+                                    <textarea class="audit-notes" id="act-${q.id}" placeholder="Działania do podjęcia..."></textarea>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    auditState[q.id] = { val: null, sec: section.code };
+                });
+                container.innerHTML += secHtml;
+            });
+        }
+
+        function updateScore(id, val) {
+            auditState[id].val = val;
+            const card = document.querySelector(`[data-qid="${id}"]`);
+            card.querySelectorAll('.btn-score').forEach(b => b.classList.toggle('active', b.dataset.val == val));
+            calculateAudit();
+        }
+
+        function injectExample(id, text) {
+            const area = document.getElementById(`find-${id}`);
+            if(area.value) area.value += "\n";
+            area.value += "• " + text;
+        }
+
+        function calculateAudit() {
+            let tAct = 0, tPos = 0;
+            vda63P6.forEach(sec => {
+                let sAct = 0, sPos = 0;
+                sec.questions.forEach(q => {
+                    let v = auditState[q.id].val;
+                    if(v !== null && v !== 'na') {
+                        sAct += parseInt(v); sPos += 10;
+                    }
+                });
+                let pct = sPos > 0 ? Math.round((sAct/sPos)*100) : 0;
+                document.getElementById(`res-${sec.code}`).innerText = pct + "%";
+                document.getElementById(`score-${sec.code}`).innerText = `${sAct}/${sPos} PKT`;
+                tAct += sAct; tPos += sPos;
+            });
+
+            let total = tPos > 0 ? Math.round((tAct/tPos)*100) : 0;
+            document.getElementById('totalPct').innerText = total + "%";
+
+            const badge = document.getElementById('auditClass');
+            if(total >= 90) { badge.innerText = "KLASA A (ZGODNY)"; badge.style.background = "var(--vda-a)"; badge.style.color="#000"; }
+            else if(total >= 80) { badge.innerText = "KLASA B (WARUNKOWY)"; badge.style.background = "var(--vda-b)"; badge.style.color="#000"; }
+            else { badge.innerText = "KLASA C (NIEZGODNY)"; badge.style.background = "var(--vda-c)"; badge.style.color="#fff"; }
+        }
+
+        async function improveText(id) {
+            const raw = document.getElementById(`find-${id}`).value;
+            if(!raw) return;
+            const qTxt = document.querySelector(`[data-qid="${id}"] .q-text`).innerText;
+            const btn = document.querySelector(`[data-qid="${id}"] .ai-btn`);
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Poprawianie...';
+
+            try {
+                const res = await fetch('/api/vda_ai_advice', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ question: qTxt, finding: raw })
+                });
+                const data = await res.json();
+                document.getElementById(`find-${id}`).value = data.advice;
+            } finally {
+                btn.innerHTML = '<i class="fas fa-magic"></i> Profesjonalny język (AI)';
+            }
+        }
+
+        async function submitAudit() {
+            for(let id in auditState) {
+                auditState[id].finding = document.getElementById(`find-${id}`).value;
+                auditState[id].action = document.getElementById(`act-${id}`).value;
+            }
+
+            const meta = {
+                line: document.getElementById('mLine').value,
+                auditor: document.getElementById('mAuditor').value,
+                date: document.getElementById('mDate').value
+            };
+
+            document.getElementById('loader').style.display = 'flex';
+
+            try {
+                const res = await fetch('/api/vda_global_analysis', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ auditData: auditState, meta })
+                });
+                const data = await res.json();
+
+                document.getElementById('aiSummaryPanel').style.display = 'block';
+                document.getElementById('aiVerdict').innerText = data.verdict;
+                document.getElementById('aiSummary').innerText = data.summary;
+                document.getElementById('aiTopActions').innerHTML = data.top_actions.map(a => `<li>${a}</li>`).join('');
+
+                window.scrollTo({top: 0, behavior: 'smooth'});
+            } catch(e) {
+                alert("Błąd analizy końcowej AI.");
+            } finally {
+                document.getElementById('loader').style.display = 'none';
+            }
+        }
+
+        window.onload = buildAudit;
+    </script>
+</body>
+</html>

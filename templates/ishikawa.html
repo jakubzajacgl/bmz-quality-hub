@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ishikawa 6M - Quality Hub</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #00AEEF;
+            --primary-glow: rgba(0, 174, 239, 0.5);
+            --bg-dark: #0b1120;
+            --text-main: #f8fafc;
+            --panel-bg: rgba(30, 41, 59, 0.85);
+            --border-color: rgba(255, 255, 255, 0.15);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
+        body { background-color: var(--bg-dark); color: var(--text-main); min-height: 100vh; overflow-x: hidden; }
+
+        /* Tło Hubu */
+        .bg-layer { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: -2; background: url("{{ url_for('static', filename='images/batterySPC.png') }}") center/cover; filter: brightness(0.2); }
+        .overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: -1; background: linear-gradient(135deg, rgba(11,17,32,0.95) 0%, rgba(11,17,32,0.7) 100%); backdrop-filter: blur(8px); }
+
+        .navbar { height: 80px; display: flex; justify-content: space-between; align-items: center; padding: 0 40px; background: rgba(11, 17, 32, 0.9); border-bottom: 1px solid var(--border-color); }
+        .navbar-brand a { color: #fff; font-size: 1.6rem; font-weight: 700; text-decoration: none; display: flex; align-items: center; gap: 12px; }
+        .navbar-brand i { color: var(--primary); }
+        .navbar-back { color: #94a3b8; text-decoration: none; font-weight: 500; transition: 0.3s; }
+        .navbar-back:hover { color: #fff; }
+
+        .container { max-width: 1850px; margin: 30px auto; padding: 0 20px; display: grid; grid-template-columns: 450px 1fr; gap: 30px; align-items: start; }
+
+        .glass-panel { background: var(--panel-bg); border: 1px solid var(--border-color); border-radius: 16px; padding: 25px; box-shadow: 0 15px 40px rgba(0,0,0,0.5); }
+        .panel-header { font-size: 1.2rem; font-weight: 700; margin-bottom: 20px; color: var(--primary); border-bottom: 1px solid var(--border-color); padding-bottom: 10px; display: flex; align-items: center; gap: 10px; }
+
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; font-size: 0.8rem; color: #94a3b8; margin-bottom: 5px; text-transform: uppercase; font-weight: 700; }
+        .form-control { width: 100%; background: rgba(0,0,0,0.4); border: 1px solid var(--border-color); color: #fff; padding: 12px; border-radius: 8px; outline: none; transition: 0.3s; font-size: 0.9rem; }
+        .form-control:focus { border-color: var(--primary); box-shadow: 0 0 10px var(--primary-glow); }
+
+        textarea.form-control { resize: none; height: 60px; }
+
+        .btn-ai { width: 100%; padding: 14px; background: linear-gradient(45deg, #00AEEF, #0072ff); color: #fff; border: none; border-radius: 8px; font-weight: 800; cursor: pointer; margin-bottom: 20px; transition: 0.3s; display: flex; align-items: center; justify-content: center; gap: 10px; }
+        .btn-ai:hover { transform: translateY(-2px); box-shadow: 0 5px 15px var(--primary-glow); }
+
+        /* WIZUALIZACJA */
+        .visual-container {
+            background: #0b1120;
+            border-radius: 16px;
+            border: 1px solid var(--border-color);
+            min-height: 750px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        #ishikawaSvg { width: 100%; height: 100%; min-height: 700px; }
+
+        /* Elementy Diagramu */
+        .main-spine { stroke: #f8fafc; stroke-width: 4; stroke-linecap: round; }
+        .bone-line { stroke: #94a3b8; stroke-width: 3; stroke-linecap: round; }
+        .cause-branch { stroke: rgba(255, 255, 255, 0.2); stroke-width: 1.5; }
+
+        .cat-text { fill: var(--primary); font-weight: 800; font-size: 18px; text-transform: uppercase; letter-spacing: 1px; }
+        .cause-text { fill: #fff; font-size: 13px; font-weight: 500; }
+
+        .problem-box {
+            background: var(--primary);
+            color: #fff;
+            padding: 20px;
+            border-radius: 12px;
+            border: 3px solid #fff;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            font-weight: 900;
+            font-size: 1.1rem;
+            box-shadow: 0 0 30px var(--primary-glow);
+        }
+
+        .action-bar { margin-top: 25px; display: flex; gap: 15px; }
+        .btn-export { padding: 12px 25px; background: #1e293b; color: #fff; border: 1px solid var(--primary); border-radius: 8px; cursor: pointer; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+
+        @media print {
+            .navbar, .glass-panel, .btn-ai, .action-bar { display: none !important; }
+            body { background: #fff !important; }
+            .visual-container { background: #fff !important; border: none; }
+            .main-spine, .bone-line { stroke: #000 !important; }
+            .cat-text { fill: #000 !important; }
+            .cause-text { fill: #000 !important; }
+            .problem-box { background: #fff !important; color: #000 !important; border: 2px solid #000 !important; box-shadow: none; }
+            .cause-branch { stroke: #ccc !important; }
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-layer"></div>
+    <div class="overlay"></div>
+
+    <nav class="navbar">
+        <div class="navbar-brand">
+            <a href="/"><i class="fas fa-fish"></i> Ishikawa Root Cause Analysis</a>
+        </div>
+        <a href="/" class="navbar-back"><i class="fas fa-arrow-left"></i> Wróć</a>
+    </nav>
+
+    <div class="container">
+        <div class="glass-panel">
+            <div class="panel-header"><i class="fas fa-search"></i> Definicja Problemu</div>
+            <div class="form-group">
+                <label>Skutek (Problem Główny)</label>
+                <input type="text" id="inputProblem" class="form-control" placeholder="Wpisz problem..." oninput="drawIshikawa()">
+            </div>
+
+            <button class="btn-ai" onclick="generateAI()"><i class="fas fa-robot"></i> Generuj analizę przez AI</button>
+
+            <div class="panel-header"><i class="fas fa-list"></i> Kategorie 6M</div>
+            <div class="form-group"><label>Man</label><textarea id="m_man" class="form-control" oninput="drawIshikawa()"></textarea></div>
+            <div class="form-group"><label>Machine</label><textarea id="m_machine" class="form-control" oninput="drawIshikawa()"></textarea></div>
+            <div class="form-group"><label>Material</label><textarea id="m_material" class="form-control" oninput="drawIshikawa()"></textarea></div>
+            <div class="form-group"><label>Method</label><textarea id="m_method" class="form-control" oninput="drawIshikawa()"></textarea></div>
+            <div class="form-group"><label>Measurement</label><textarea id="m_measurement" class="form-control" oninput="drawIshikawa()"></textarea></div>
+            <div class="form-group"><label>Environment</label><textarea id="m_environment" class="form-control" oninput="drawIshikawa()"></textarea></div>
+        </div>
+
+        <div style="display: flex; flex-direction: column;">
+            <div class="visual-container">
+                <svg id="ishikawaSvg" viewBox="0 0 1100 750">
+                    <!-- Rysowane przez JS -->
+                </svg>
+            </div>
+            <div class="action-bar">
+                <button class="btn-export" onclick="window.print()"><i class="fas fa-print"></i> Drukuj / PDF</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function drawIshikawa() {
+            const svg = document.getElementById('ishikawaSvg');
+            const problem = document.getElementById('inputProblem').value || "ZDEFINIUJ PROBLEM";
+
+            const categories = [
+                { id: 'm_man', label: 'Man', top: true, x: 220 },
+                { id: 'm_machine', label: 'Machine', top: true, x: 480 },
+                { id: 'm_material', label: 'Material', top: true, x: 740 },
+                { id: 'm_method', label: 'Method', top: false, x: 220 },
+                { id: 'm_measurement', label: 'Measurement', top: false, x: 480 },
+                { id: 'm_environment', label: 'Environment', top: false, x: 740 }
+            ];
+
+            let html = `
+                <!-- Kręgosłup -->
+                <line x1="50" y1="375" x2="850" y2="375" class="main-spine" />
+
+                <!-- Głowa (Problem) -->
+                <foreignObject x="850" y="295" width="220" height="160">
+                    <div xmlns="http://www.w3.org/1999/xhtml" class="problem-box">
+                        ${problem.toUpperCase()}
+                    </div>
+                </foreignObject>
+            `;
+
+            categories.forEach(cat => {
+                const causes = document.getElementById(cat.id).value.split('\n').filter(t => t.trim() !== "");
+                const boneXStart = cat.x;
+                const boneXEnd = cat.x - 140; // Kąt ości
+                const boneYStart = 375;
+                const boneYEnd = cat.top ? 100 : 650;
+                const labelY = cat.top ? 80 : 685;
+
+                // Rysowanie ości
+                html += `<line x1="${boneXStart}" y1="${boneYStart}" x2="${boneXEnd}" y2="${boneYEnd}" class="bone-line" />`;
+                html += `<text x="${boneXEnd}" y="${labelY}" class="cat-text" text-anchor="middle">${cat.label}</text>`;
+
+                // Rysowanie przyczyn
+                causes.forEach((cause, index) => {
+                    const spacing = 55; // Odstęp między przyczynami
+                    const offset = (index + 1) * spacing;
+
+                    // Obliczanie punktu styku na ości (proporcjonalnie)
+                    const ratio = offset / 300;
+                    const cY = cat.top ? (375 - offset) : (375 + offset);
+                    const cX = boneXStart - (boneXStart - boneXEnd) * (offset / Math.abs(boneYStart - boneYEnd));
+
+                    if ((cat.top && cY > 120) || (!cat.top && cY < 630)) {
+                        // Linia pozioma przyczyny - wydłużona dla czytelności
+                        const lineLen = 160;
+                        html += `
+                            <line x1="${cX}" y1="${cY}" x2="${cX - lineLen}" y2="${cY}" class="cause-branch" />
+                            <circle cx="${cX}" cy="${cY}" r="4" fill="${varColor(cat.id)}" />
+                            <text x="${cX - lineLen + 5}" y="${cY - 8}" class="cause-text" text-anchor="start">
+                                ${cause}
+                            </text>
+                        `;
+                    }
+                });
+            });
+
+            svg.innerHTML = html;
+        }
+
+        function varColor(id) {
+            const colors = { m_man: '#00AEEF', m_machine: '#34d399', m_material: '#fbbf24', m_method: '#f87171', m_measurement: '#a78bfa', m_environment: '#f472b6' };
+            return colors[id] || '#fff';
+        }
+
+        async function generateAI() {
+            const problem = document.getElementById('inputProblem').value;
+            if(!problem) return alert("Wpisz problem!");
+            const btn = document.querySelector('.btn-ai');
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Analiza...';
+
+            try {
+                const res = await fetch('/api/generate_ishikawa', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ problem: problem })
+                });
+                const data = await res.json();
+                document.getElementById('m_man').value = data.man.join('\n');
+                document.getElementById('m_machine').value = data.machine.join('\n');
+                document.getElementById('m_material').value = data.material.join('\n');
+                document.getElementById('m_method').value = data.method.join('\n');
+                document.getElementById('m_measurement').value = data.measurement.join('\n');
+                document.getElementById('m_environment').value = data.environment.join('\n');
+                drawIshikawa();
+            } finally {
+                btn.innerHTML = '<i class="fas fa-robot"></i> Generuj analizę przez AI';
+            }
+        }
+
+        window.onload = drawIshikawa;
+    </script>
+</body>
+</html>

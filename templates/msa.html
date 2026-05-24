@@ -1,0 +1,1072 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MSA Module - BMZ Quality Hub</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        :root {
+            --primary: #00AEEF;
+            --primary-glow: rgba(0, 174, 239, 0.5);
+            --bg-dark: #0b1120;
+            --text-main: #f8fafc;
+            --panel-bg: rgba(30, 41, 59, 0.85);
+            --border-color: rgba(255, 255, 255, 0.15);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
+
+        body { background-color: var(--bg-dark); color: var(--text-main); min-height: 100vh; overflow-x: hidden; }
+
+        .bg-layer { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: -2; background-image: url("{{ url_for('static', filename='images/batterySPC.png') }}"); background-size: cover; background-position: center; filter: brightness(0.3) contrast(1.2); }
+        .overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: -1; background: linear-gradient(135deg, rgba(11,17,32,0.95) 0%, rgba(11,17,32,0.7) 100%); backdrop-filter: blur(8px); }
+
+        .navbar { height: 80px; display: flex; justify-content: space-between; align-items: center; padding: 0 40px; background: rgba(11, 17, 32, 0.9); border-bottom: 1px solid var(--border-color); }
+        .navbar-brand a { color: #fff; font-size: 1.6rem; font-weight: 700; text-decoration: none; display: flex; align-items: center; gap: 12px; }
+        .navbar-brand i { color: var(--primary); }
+        .navbar-back { color: #94a3b8; text-decoration: none; font-weight: 500; font-size: 1.1rem; transition: 0.3s; }
+        .navbar-back:hover { color: #fff; }
+
+        .container { max-width: 1850px; margin: 40px auto; padding: 0 20px; display: grid; grid-template-columns: 750px 1fr; gap: 30px; align-items: start; }
+
+        .glass-panel { background: var(--panel-bg); border: 1px solid var(--border-color); border-radius: 16px; padding: 30px; box-shadow: 0 15px 40px rgba(0,0,0,0.5); display: flex; flex-direction: column; }
+        .panel-header { font-size: 1.3rem; font-weight: 700; margin-bottom: 25px; color: var(--primary); border-bottom: 1px solid var(--border-color); padding-bottom: 15px; display: flex; justify-content: space-between; align-items: center;}
+
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; font-size: 0.85rem; color: #cbd5e1; margin-bottom: 6px; font-weight: 600;}
+        .form-control { width: 100%; background: rgba(0,0,0,0.4); border: 1px solid var(--border-color); color: #fff; padding: 10px 12px; border-radius: 8px; outline: none; transition: 0.3s; }
+        .form-control:focus { border-color: var(--primary); box-shadow: 0 0 10px var(--primary-glow); }
+
+        .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; }
+
+        .history-toolbar { display: flex; gap: 10px; margin-bottom: 15px; background: rgba(0,0,0,0.2); padding: 8px; border-radius: 6px; border: 1px solid var(--border-color); }
+        .btn-tool { background: rgba(255,255,255,0.05); border: 1px solid var(--border-color); color: #fff; padding: 6px 12px; font-size: 0.85rem; border-radius: 4px; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: 0.2s; }
+        .btn-tool:hover:not(:disabled) { background: var(--primary); color: #000; border-color: var(--primary); }
+        .btn-tool:disabled { opacity: 0.3; cursor: not-allowed; }
+
+        .data-grid-container { width: 100%; overflow-x: auto; background: rgba(0,0,0,0.2); border: 1px solid var(--border-color); border-radius: 8px; margin-top: 5px; padding: 15px; }
+        .appraiser-block { margin-bottom: 25px; }
+        .appraiser-block h4 { color: #fff; background: rgba(0, 174, 239, 0.2); border: 1px solid rgba(0, 174, 239, 0.4); padding: 10px; font-size: 1rem; border-radius: 6px 6px 0 0; margin-bottom: 0; font-weight: 700; }
+
+        .data-table { width: 100%; border-collapse: collapse; background: transparent;}
+        .data-table th, .data-table td { border: 1px solid var(--border-color); padding: 0; min-width: 55px;}
+        .data-table th { background: rgba(0,0,0,0.5); color: #94a3b8; font-size: 0.85rem; padding: 8px; text-align: center; font-weight: 600; }
+        .data-table .row-header { background: rgba(0,0,0,0.3); color: #cbd5e1; font-weight: 600; text-align: center; font-size: 0.85rem;}
+
+        .grid-cell { width: 100%; height: 100%; background: rgba(0, 0, 0, 0.4); border: 1px solid transparent; color: #fff; padding: 10px; text-align: center; outline: none; font-variant-numeric: tabular-nums; font-size: 0.95rem; transition: 0.2s; font-weight: 500; }
+        .grid-cell:focus { background: rgba(0, 174, 239, 0.15); border: 1px solid var(--primary); box-shadow: inset 0 0 5px var(--primary-glow); }
+        .ref-cell { border-bottom: 2px solid #10b981 !important; }
+
+        .paste-hint { font-size: 0.85rem; color: #10b981; margin-top: 10px; display: flex; align-items: center; gap: 5px; background: rgba(16,185,129,0.05); padding: 10px; border-radius: 6px; border: 1px solid rgba(16,185,129,0.15);}
+
+        .btn-run { width: 100%; padding: 18px; background: var(--primary); color: #000; border: none; border-radius: 8px; font-size: 1.2rem; font-weight: 800; cursor: pointer; transition: 0.3s; box-shadow: 0 0 20px var(--primary-glow); margin-top: 25px; }
+        .btn-run:hover { transform: translateY(-3px); box-shadow: 0 5px 30px var(--primary-glow); }
+
+        .results-dashboard { display: none; flex-direction: column; gap: 20px; animation: fadeIn 0.5s ease forwards; background: var(--panel-bg); padding: 30px; border-radius: 16px;}
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+        .report-meta { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; background: rgba(0,0,0,0.3); padding: 20px; border-radius: 12px; border: 1px solid var(--border-color); font-size: 0.95rem; color: #cbd5e1; }
+        .report-meta strong { color: #fff; display: block; font-size: 0.8rem; text-transform: uppercase; color: #94a3b8; margin-bottom: 3px;}
+        .meta-val { font-size: 1.05rem; color: #fff; font-weight: 500;}
+
+        .advanced-table { width: 100%; border-collapse: collapse; margin-top: 10px; background: rgba(0,0,0,0.3); border-radius: 8px; overflow: hidden; border: 1px solid var(--border-color);}
+        .advanced-table th, .advanced-table td { padding: 12px; border: 1px solid rgba(255,255,255,0.1); text-align: center; }
+        .advanced-table th { background: rgba(0,0,0,0.6); color: var(--primary); font-size: 0.9rem; font-weight: 700; }
+        .advanced-table td { color: #f8fafc; font-size: 1rem; }
+        .advanced-table .row-title { text-align: left; font-weight: 600; color: #cbd5e1; padding-left: 20px;}
+        .advanced-table .highlight { font-weight: bold; color: var(--primary); }
+        .advanced-table .status-ok { background: rgba(16, 185, 129, 0.15); color: #10b981; font-weight: 700;}
+        .advanced-table .status-warn { background: rgba(245, 158, 11, 0.15); color: #f59e0b; font-weight: 700;}
+        .advanced-table .status-err { background: rgba(239, 68, 68, 0.15); color: #ef4444; font-weight: 700;}
+
+        .kpi-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+        .kpi-card { background: rgba(0,0,0,0.5); border: 1px solid var(--border-color); border-radius: 12px; padding: 20px; text-align: center; display: flex; flex-direction: column; justify-content: center; }
+        .kpi-value { font-size: 2.2rem; font-weight: 800; color: #fff; margin-top: 5px; }
+        .kpi-label { font-size: 0.85rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px; font-weight: 600;}
+
+        .chart-wrapper { width: 100%; height: 280px; background: rgba(0,0,0,0.2); border-radius: 12px; padding: 15px; margin-bottom: 15px;}
+
+        .formulas-container { background: rgba(0,0,0,0.3); padding: 25px; border-radius: 12px; border: 1px solid var(--border-color); color: #cbd5e1; font-size: 0.95rem; line-height: 1.8; margin-top: 10px; }
+        .formula-line { display: flex; flex-direction: column; margin-bottom: 15px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 15px; }
+        .formula-line:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+        .f-title { font-weight: 600; color: #fff; margin-bottom: 5px;}
+        .f-math { color: var(--primary); font-family: monospace; font-size: 1.1rem; font-weight: bold; background: rgba(0,0,0,0.4); padding: 8px 12px; border-radius: 6px; display: inline-block; width: fit-content; border: 1px solid rgba(0, 174, 239, 0.2);}
+
+        .ai-summary { background: rgba(0, 174, 239, 0.1); border-left: 4px solid var(--primary); padding: 20px; border-radius: 0 12px 12px 0; line-height: 1.6; font-size: 1.05rem; margin-top: 20px;}
+        .ai-header { display: flex; align-items: center; gap: 10px; font-weight: 700; color: var(--primary); margin-bottom: 10px; }
+
+        .action-btns { display: flex; gap: 15px; }
+        .btn-export { padding: 10px 18px; background: #0f172a; color: #00AEEF; border: 1px solid var(--primary); border-radius: 6px; font-size: 0.95rem; font-weight: 600; cursor: pointer; transition: 0.2s; display: flex; align-items: center; gap: 8px; }
+        .btn-export:hover { background: var(--primary); color: #000; box-shadow: 0 0 15px var(--primary-glow); }
+
+        .loader { display: none; text-align: center; padding: 60px; color: var(--primary); font-size: 2.5rem; }
+
+        /* NATYWNY WEKTOROWY PDF (BEZ MGŁY, W KOLORZE) */
+        @media print {
+            @page { size: landscape; margin: 10mm; }
+            body { background: #fff !important; color: #000 !important; overflow: visible !important;}
+            .bg-layer, .overlay, .navbar, .glass-panel:first-child, .action-btns { display: none !important; }
+            .container { grid-template-columns: 1fr; margin: 0; padding: 0; max-width: 100%; display: block;}
+            .glass-panel { background: none !important; border: none !important; box-shadow: none !important; padding: 0 !important; }
+
+            .report-meta { background: #f8fafc !important; border: 1px solid #cbd5e1 !important; color: #000 !important; }
+            .report-meta strong { color: #475569 !important; }
+            .meta-val { color: #000 !important;}
+
+            .advanced-table { background: #fff !important; border: 1px solid #cbd5e1 !important; }
+            .advanced-table th { background: #f1f5f9 !important; color: #0f172a !important; border: 1px solid #cbd5e1 !important;}
+            .advanced-table td { color: #334155 !important; border: 1px solid #cbd5e1 !important; }
+            .advanced-table .row-title { color: #0f172a !important; }
+            .advanced-table .status-ok { background: #d1fae5 !important; color: #065f46 !important; }
+            .advanced-table .status-warn { background: #fef3c7 !important; color: #92400e !important; }
+            .advanced-table .status-err { background: #fee2e2 !important; color: #991b1b !important; }
+
+            .formulas-container { background: #f8fafc !important; border: 1px solid #cbd5e1 !important; color: #334155 !important; page-break-inside: avoid;}
+            .f-title { color: #0f172a !important;}
+            .f-math { background: #fff !important; color: #0284c7 !important; border: 1px solid #cbd5e1 !important;}
+
+            .chart-wrapper { background: none !important; height: 350px !important; page-break-inside: avoid !important;}
+            .page-break { page-break-before: always !important; }
+            .ai-summary { background: #f0f9ff !important; border: 1px solid #cbd5e1 !important; border-left: 4px solid #0284c7 !important; color: #0f172a !important;}
+
+            * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="bg-layer"></div>
+    <div class="overlay"></div>
+
+    <nav class="navbar">
+        <div class="navbar-brand">
+            <a href="/"><i class="fas fa-ruler-combined"></i> Moduł MSA (AIAG 4th Edition)</a>
+        </div>
+        <a href="/" class="navbar-back"><i class="fas fa-arrow-left"></i> Wróć do Hubu</a>
+    </nav>
+
+    <div class="container">
+        <div class="glass-panel">
+            <div class="panel-header"><i class="fas fa-sliders-h"></i> Parametry Analizy MSA</div>
+
+            <div class="form-group">
+                <label>Rodzaj MSA</label>
+                <select class="form-control" id="analysisType" onchange="toggleConfig()">
+                    <option value="grr">Gage R&R (Karty Kontrolne X-bar & R)</option>
+                    <option value="kappa">Analiza Atrybutów (KAPPA / OK-NOK)</option>
+                </select>
+            </div>
+
+            <div class="row-2">
+                <div class="form-group">
+                    <label>Nazwa Przyrządu</label>
+                    <input type="text" class="form-control" id="gageName" value="Wizyjny System Kontroli">
+                </div>
+                <div class="form-group">
+                    <label>Nr Przyrządu</label>
+                    <input type="text" class="form-control" id="gageNo" value="VIS-002">
+                </div>
+            </div>
+
+            <div class="row-2">
+                <div class="form-group">
+                    <label>Charakterystyka / Wymiar</label>
+                    <input type="text" class="form-control" id="characteristic" value="Zarysowania Powierzchni">
+                </div>
+                <div class="form-group">
+                    <label>Inżynier Wykonujący</label>
+                    <input type="text" class="form-control" id="analystName" placeholder="Jan Kowalski">
+                </div>
+            </div>
+
+            <div id="grrInputs">
+                <div class="panel-header" style="margin-top: 15px; font-size: 1.1rem; padding-bottom: 5px;"><i class="fas fa-ruler"></i> Specyfikacja i Próbki</div>
+                <div class="row-3">
+                    <div class="form-group">
+                        <label>LSL (Dolna)</label>
+                        <input type="number" step="0.01" class="form-control" id="lsl" value="1.90">
+                    </div>
+                    <div class="form-group">
+                        <label>Nominał</label>
+                        <input type="number" step="0.01" class="form-control" id="target" value="2.00">
+                    </div>
+                    <div class="form-group">
+                        <label>USL (Górna)</label>
+                        <input type="number" step="0.01" class="form-control" id="usl" value="2.10">
+                    </div>
+                </div>
+
+                <div class="row-3">
+                    <div class="form-group">
+                        <label>Liczba Części (n)</label>
+                        <input type="number" class="form-control" id="numParts" value="10" min="2" max="20" onchange="buildGrid()">
+                    </div>
+                    <div class="form-group">
+                        <label>Operatorzy (a)</label>
+                        <select class="form-control" id="numAppraisers" onchange="buildGrid()">
+                            <option value="2">2</option>
+                            <option value="3" selected>3</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Liczba Prób (r)</label>
+                        <select class="form-control" id="numTrials" onchange="buildGrid()">
+                            <option value="2">2</option>
+                            <option value="3" selected>3</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div id="kappaInputs" style="display: none;">
+                <div class="panel-header" style="margin-top: 15px; font-size: 1.1rem; padding-bottom: 5px;"><i class="fas fa-check-circle"></i> Parametry KAPPA</div>
+                <div class="row-3">
+                    <div class="form-group">
+                        <label>Liczba Próbek</label>
+                        <input type="number" class="form-control" id="numKappaParts" value="20" min="5" max="50" onchange="buildGrid()">
+                    </div>
+                    <div class="form-group">
+                        <label>Operatorzy</label>
+                        <select class="form-control" id="numKappaAppraisers" onchange="buildGrid()">
+                            <option value="2">2</option>
+                            <option value="3" selected>3</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Liczba Prób (r)</label>
+                        <select class="form-control" id="numKappaTrials" onchange="buildGrid()">
+                            <option value="2">2</option>
+                            <option value="3" selected>3</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel-header" style="margin-top: 15px; font-size: 1.1rem; padding-bottom: 5px;"><i class="fas fa-edit"></i> Edycja i Macierz Pomiarów</div>
+            <div class="history-toolbar">
+                <button class="btn-tool" id="btnUndo" onclick="undo()" disabled><i class="fas fa-undo"></i> Cofnij (Ctrl+Z)</button>
+                <button class="btn-tool" id="btnRedo" onclick="redo()" disabled><i class="fas fa-redo"></i> Ponów (Ctrl+Y)</button>
+                <button class="btn-tool" onclick="clearAllData()" style="margin-left: auto; color: #fca5a5;"><i class="fas fa-trash-alt"></i> Wyczyść wszystko</button>
+            </div>
+
+            <div class="form-group">
+                <div class="paste-hint"><i class="fas fa-paste"></i> Zaznacz obszar w Excelu, kliknij pierwszą komórkę w tabeli i wciśnij Ctrl+V. Dane rozejdą się automatycznie.</div>
+                <div class="data-grid-container" id="dataTablesContainer">
+                    </div>
+            </div>
+
+            <button class="btn-run" onclick="generateReport()"><i class="fas fa-microchip"></i> Uruchom Analizę MSA</button>
+        </div>
+
+        <div class="glass-panel" style="display: flex; flex-direction: column;" id="rightPanelContainer">
+
+            <div id="loadingIndicator" class="loader">
+                <i class="fas fa-cog fa-spin"></i>
+                <p style="font-size: 1.2rem; margin-top: 15px; color: #cbd5e1;">Silnik AIAG przelicza macierz wariancji...</p>
+            </div>
+
+            <div id="resultsDashboard" class="results-dashboard">
+                <div class="panel-header">
+                    <span><i class="fas fa-file-signature"></i> Oficjalny Raport MSA (Zgodny z AIAG)</span>
+                    <div class="action-btns" id="pdfBtnContainer">
+                        <button class="btn-export" onclick="exportPDF()"><i class="fas fa-print"></i> Drukuj / Zapisz PDF</button>
+                    </div>
+                </div>
+
+                <div class="report-meta">
+                    <div><strong>Przyrząd:</strong> <span class="meta-val" id="metaGageName"></span></div>
+                    <div><strong>Nr Przyrządu:</strong> <span class="meta-val" id="metaGageNo"></span></div>
+                    <div><strong>Charakterystyka:</strong> <span class="meta-val" id="metaChar"></span></div>
+
+                    <div><strong>Inżynier:</strong> <span class="meta-val" id="metaAnalyst"></span></div>
+                    <div><strong>Data analizy:</strong> <span class="meta-val" id="metaDate"></span></div>
+                    <div><strong>Ilość próbek (n):</strong> <span class="meta-val" id="metaTotalN"></span></div>
+
+                    <div id="metaLslDiv"><strong>LSL:</strong> <span class="meta-val" id="metaLsl"></span></div>
+                    <div id="metaNominalDiv"><strong>Nominał:</strong> <span class="meta-val" id="metaNominal"></span></div>
+                    <div id="metaUslDiv"><strong>USL:</strong> <span class="meta-val" id="metaUsl"></span></div>
+                </div>
+
+                <div id="kpiGrr" style="display: none;">
+
+                    <div class="panel-header" style="font-size: 1.1rem; padding-bottom: 5px; margin-top: 10px;"><i class="fas fa-chart-line"></i> Karty Kontrolne (Control Charts)</div>
+                    <div class="chart-wrapper"><canvas id="xbarChart"></canvas></div>
+                    <div class="chart-wrapper"><canvas id="rChart"></canvas></div>
+
+                    <div class="page-break"></div>
+
+                    <div class="panel-header" style="font-size: 1.1rem; padding-bottom: 5px; margin-top: 20px;"><i class="fas fa-table"></i> Gage R&R Study Analysis</div>
+                    <table class="advanced-table">
+                        <thead>
+                            <tr>
+                                <th style="text-align: left; padding-left: 20px;">Komponent Wariancji</th>
+                                <th>StdDev (S)</th>
+                                <th>Study Var (6*S)</th>
+                                <th>% Study Var (%SV)</th>
+                                <th>% Tolerancji (%Tol)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td class="row-title">Powtarzalność (EV - Sprzęt)</td>
+                                <td id="resS_EV">-</td>
+                                <td id="resSV_EV">-</td>
+                                <td id="resPctSV_EV">-</td>
+                                <td id="resPctTol_EV" class="highlight">-</td>
+                            </tr>
+                            <tr>
+                                <td class="row-title">Odtwarzalność (AV - Operator)</td>
+                                <td id="resS_AV">-</td>
+                                <td id="resSV_AV">-</td>
+                                <td id="resPctSV_AV">-</td>
+                                <td id="resPctTol_AV" class="highlight">-</td>
+                            </tr>
+                            <tr style="background: rgba(0, 174, 239, 0.15);">
+                                <td class="row-title" style="color: var(--primary);">Całkowity Błąd R&R (GRR)</td>
+                                <td id="resS_GRR">-</td>
+                                <td id="resSV_GRR">-</td>
+                                <td id="resPctSV_GRR" style="color: var(--primary); font-weight: bold;">-</td>
+                                <td id="resPctTol_GRR" style="color: var(--primary); font-weight: bold; font-size: 1.1rem;">-</td>
+                            </tr>
+                            <tr>
+                                <td class="row-title">Zmienność Części (PV)</td>
+                                <td id="resS_PV">-</td>
+                                <td id="resSV_PV">-</td>
+                                <td id="resPctSV_PV">-</td>
+                                <td id="resPctTol_PV">-</td>
+                            </tr>
+                            <tr>
+                                <td class="row-title">Zmienność Całkowita (TV)</td>
+                                <td id="resS_TV">-</td>
+                                <td id="resSV_TV">-</td>
+                                <td id="resPctSV_TV">100.00%</td>
+                                <td id="resPctTol_TV">-</td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <div class="panel-header" style="font-size: 1.1rem; padding-bottom: 5px; margin-top: 30px;"><i class="fas fa-clipboard-check"></i> Podsumowanie Zdolności (AIAG)</div>
+                    <table class="advanced-table">
+                        <thead>
+                            <tr>
+                                <th style="text-align: left; padding-left: 20px;">Wskaźnik MSA</th>
+                                <th>Wartość</th>
+                                <th>Kryterium Akceptacji</th>
+                                <th>Ocena</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td class="row-title">% EV (Sprzęt)</td>
+                                <td id="sumEV">-</td>
+                                <td>Wyśmienity (&lt;10%), Warunkowy (10%-30%)</td>
+                                <td id="statusEV">-</td>
+                            </tr>
+                            <tr>
+                                <td class="row-title">% AV (Operator)</td>
+                                <td id="sumAV">-</td>
+                                <td>Wyśmienity (&lt;10%), Warunkowy (10%-30%)</td>
+                                <td id="statusAV">-</td>
+                            </tr>
+                            <tr>
+                                <td class="row-title">% R&R (System)</td>
+                                <td id="sumGRR">-</td>
+                                <td>Akceptowalny (&lt;10%), Odrzucony (&gt;30%)</td>
+                                <td id="statusGRR">-</td>
+                            </tr>
+                            <tr>
+                                <td class="row-title">ndc (Rozdzielczość)</td>
+                                <td id="sumNDC">-</td>
+                                <td>Wymagane &gt;= 5</td>
+                                <td id="statusNDC">-</td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <div class="page-break"></div>
+
+                    <div class="panel-header" style="font-size: 1.1rem; padding-bottom: 5px; margin-top: 30px;">
+                        <i class="fas fa-square-root-alt"></i> Metodyka Obliczeń i Wzory (Krok po Kroku)
+                    </div>
+                    <div class="formulas-container">
+                        <div class="formula-line">
+                            <span class="f-title">1. Powtarzalność (Equipment Variation - EV):</span>
+                            <span class="f-math" id="f_ev">EV = R̿ / d₂ = ...</span>
+                        </div>
+                        <div class="formula-line">
+                            <span class="f-title">2. Odtwarzalność (Appraiser Variation - AV):</span>
+                            <span class="f-math" id="f_av">AV = √ [ (X̄_diff / d₂*)² - (EV² / (n × r)) ] = ...</span>
+                        </div>
+                        <div class="formula-line">
+                            <span class="f-title">3. Całkowity Błąd Systemu Pomiarowego (Gage R&R):</span>
+                            <span class="f-math" id="f_grr">GRR = √ (EV² + AV²) = ...</span>
+                        </div>
+                        <div class="formula-line">
+                            <span class="f-title">4. Zmienność Części (Part Variation - PV):</span>
+                            <span class="f-math" id="f_pv">PV = R_p / d₂* = ...</span>
+                        </div>
+                        <div class="formula-line">
+                            <span class="f-title">5. Zmienność Całkowita (Total Variation - TV):</span>
+                            <span class="f-math" id="f_tv">TV = √ (GRR² + PV²) = ...</span>
+                        </div>
+                        <div class="formula-line">
+                            <span class="f-title">6. Liczba rozróżnialnych kategorii (ndc):</span>
+                            <span class="f-math" id="f_ndc">ndc = 1.41 × (PV / GRR) = ...</span>
+                        </div>
+                    </div>
+
+                    <div class="ai-summary">
+                        <div class="ai-header"><i class="fas fa-robot"></i> Rekomendacja Ekspercka (Groq AI)</div>
+                        <div id="aiText">Czekam na odpowiedź z modelu...</div>
+                    </div>
+                </div>
+
+                <div id="kpiKappa" style="display: none;">
+                    <div class="panel-header" style="font-size: 1.1rem; padding-bottom: 5px; margin-top: 10px;"><i class="fas fa-users"></i> Zgodność Operatorów z Wzorcem (Cross-Tabulation)</div>
+                    <table class="advanced-table" style="margin-bottom: 25px;">
+                        <thead>
+                            <tr>
+                                <th style="text-align: left; padding-left: 20px;">Operator</th>
+                                <th>Suma Inspekcji</th>
+                                <th>Zgodność (Match)</th>
+                                <th>Przeoczenie (Miss)</th>
+                                <th>Fałszywy Alarm (False Reject)</th>
+                                <th>Skuteczność %</th>
+                            </tr>
+                        </thead>
+                        <tbody id="kappaAppraiserTable"></tbody>
+                    </table>
+
+                    <div class="panel-header" style="font-size: 1.1rem; padding-bottom: 5px; margin-top: 30px;"><i class="fas fa-square-root-alt"></i> Obliczenia Wskaźnika Kappa (Krok po Kroku)</div>
+                    <table class="advanced-table">
+                        <thead>
+                            <tr>
+                                <th style="text-align: left; padding-left: 20px;">Parametr</th>
+                                <th>Wzór / Opis</th>
+                                <th>Wartość Wyliczona</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td class="row-title">P_obs (Zgodność Obserwowana)</td>
+                                <td>Wszystkie Zgodności / Wszystkie Oceny</td>
+                                <td id="res_pobs" class="highlight">-</td>
+                            </tr>
+                            <tr>
+                                <td class="row-title">P_exp (Zgodność Oczekiwana)</td>
+                                <td>Prawdopodobieństwo zgodności losowej</td>
+                                <td id="res_pexp" class="highlight">-</td>
+                            </tr>
+                            <tr style="background: rgba(0, 174, 239, 0.15);">
+                                <td class="row-title" style="color: var(--primary);">Wskaźnik Fleiss Kappa (κ)</td>
+                                <td>(P_obs - P_exp) / (1 - P_exp)</td>
+                                <td id="res_kappa_val" style="color: var(--primary); font-weight: bold; font-size: 1.2rem;">-</td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <div class="ai-summary">
+                        <div class="ai-header"><i class="fas fa-robot"></i> Diagnoza Atrybutowa (Groq AI)</div>
+                        <div id="aiTextKappa">Czekam na odpowiedź z modelu...</div>
+                    </div>
+
+                    <div class="chart-wrapper" style="margin-top: 25px;"><canvas id="kappaChart"></canvas></div>
+                </div>
+
+            </div>
+
+            <div id="placeholderArea" style="flex: 1; display: flex; align-items: center; justify-content: center; color: #475569; text-align: center;">
+                <div>
+                    <i class="fas fa-ruler-combined" style="font-size: 5rem; margin-bottom: 25px; opacity: 0.2;"></i>
+                    <h2 style="font-size: 1.8rem; margin-bottom: 10px;">Brak danych do analizy</h2>
+                    <p style="font-size: 1.1rem;">Uzupełnij parametry po lewej, wklej dane i wygeneruj raport.</p>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        const d2_r = { 2: 1.128, 3: 1.693 };
+        const d2_star_a = { 2: 1.414, 3: 1.912 };
+        const d2_star_n = { 2: 1.414, 3: 1.912, 4: 2.24, 5: 2.48, 6: 2.67, 7: 2.83, 8: 2.96, 9: 3.08, 10: 3.18, 15: 3.55, 20: 3.81 };
+        const D4_r = { 2: 3.267, 3: 2.574 };
+        const A2_r = { 2: 1.880, 3: 1.023 };
+
+        let xbarChartObj = null;
+        let rChartObj = null;
+        let kappaChartObj = null;
+
+        let undoStack = [];
+        let redoStack = [];
+
+        function saveState() {
+            let state = {};
+            document.querySelectorAll('.grid-cell').forEach((cell, idx) => {
+                state[idx] = cell.value;
+            });
+            undoStack.push(JSON.stringify(state));
+            redoStack = [];
+            updateToolbarButtons();
+        }
+
+        function undo() {
+            if (undoStack.length <= 1) return;
+            let currentState = undoStack.pop();
+            redoStack.push(currentState);
+            let previousState = JSON.parse(undoStack[undoStack.length - 1]);
+            applyState(previousState);
+            updateToolbarButtons();
+        }
+
+        function redo() {
+            if (redoStack.length === 0) return;
+            let nextStateStr = redoStack.pop();
+            undoStack.push(nextStateStr);
+            let nextState = JSON.parse(nextStateStr);
+            applyState(nextState);
+            updateToolbarButtons();
+        }
+
+        function applyState(state) {
+            document.querySelectorAll('.grid-cell').forEach((cell, idx) => {
+                cell.value = state[idx] || "";
+            });
+        }
+
+        function updateToolbarButtons() {
+            document.getElementById('btnUndo').disabled = (undoStack.length <= 1);
+            document.getElementById('btnRedo').disabled = (redoStack.length === 0);
+        }
+
+        function clearAllData() {
+            saveState();
+            document.querySelectorAll('.grid-cell').forEach(cell => cell.value = "");
+            saveState();
+        }
+
+        window.addEventListener('keydown', function(e) {
+            if (e.ctrlKey && e.key.toLowerCase() === 'z') { e.preventDefault(); undo(); }
+            if (e.ctrlKey && e.key.toLowerCase() === 'y') { e.preventDefault(); redo(); }
+        });
+
+        // -----------------------------------------------------------
+        // PANCERNY FLAT-FILL - Globalne wlewanie danych
+        // Ignoruje tabele - wpisuje po kolei w komórki edytowalne
+        // -----------------------------------------------------------
+        document.addEventListener('paste', function(e) {
+            if (!e.target.classList.contains('grid-cell')) return;
+            e.preventDefault();
+            saveState();
+
+            const pasteData = (e.clipboardData || window.clipboardData).getData('text');
+            const cells = pasteData.split(/[\s\r\n\t;]+/).map(c => c.trim()).filter(c => c !== "");
+
+            const allInputs = Array.from(document.querySelectorAll('.grid-cell'));
+            const startIndex = allInputs.indexOf(e.target);
+
+            if (startIndex !== -1) {
+                for(let i = 0; i < cells.length; i++) {
+                    if (startIndex + i < allInputs.length) {
+                        allInputs[startIndex + i].value = cells[i];
+                    }
+                }
+            }
+            saveState();
+        });
+
+        function toggleConfig() {
+            const type = document.getElementById('analysisType').value;
+            if(type === 'grr') {
+                document.getElementById('grrInputs').style.display = 'block';
+                document.getElementById('kappaInputs').style.display = 'none';
+            } else {
+                document.getElementById('grrInputs').style.display = 'none';
+                document.getElementById('kappaInputs').style.display = 'block';
+            }
+            buildGrid();
+        }
+
+        function buildGrid() {
+            const type = document.getElementById('analysisType').value;
+            const container = document.getElementById('dataTablesContainer');
+            container.innerHTML = '';
+
+            let parts, appraisers, trials;
+            if(type === 'grr') {
+                parts = parseInt(document.getElementById('numParts').value);
+                appraisers = parseInt(document.getElementById('numAppraisers').value);
+                trials = parseInt(document.getElementById('numTrials').value);
+            } else {
+                parts = parseInt(document.getElementById('numKappaParts').value);
+                appraisers = parseInt(document.getElementById('numKappaAppraisers').value);
+                trials = parseInt(document.getElementById('numKappaTrials').value);
+            }
+
+            const letters = ['A', 'B', 'C', 'D', 'E'];
+
+            if(type === 'kappa') {
+                let refHtml = `
+                <div class="appraiser-block">
+                    <h4 style="background: rgba(16, 185, 129, 0.2); border: 1px solid rgba(16, 185, 129, 0.4); border-bottom: none;"><i class="fas fa-check-double"></i> Wartości Referencyjne (Standard)</h4>
+                    <table class="data-table">
+                        <tr><th style="width: 100px;">Część</th>${Array.from({length: parts}, (_, i) => `<th>${i+1}</th>`).join('')}</tr>
+                        <tr><td class="row-header">Standard</td>`;
+                for(let p=0; p<parts; p++) {
+                    refHtml += `<td><input type="text" class="grid-cell ref-cell" data-p="${p}"></td>`;
+                }
+                refHtml += `</tr></table></div><hr style="border: 0; height: 1px; background: rgba(255,255,255,0.1); margin: 25px 0;">`;
+                container.innerHTML += refHtml;
+            }
+
+            for(let a=0; a<appraisers; a++) {
+                let html = `
+                <div class="appraiser-block">
+                    <h4>OPERATOR ${letters[a]}</h4>
+                    <table class="data-table" data-appraiser="${a}">
+                        <tr><th style="width: 100px;">Próba \\ Część</th>${Array.from({length: parts}, (_, i) => `<th>${i+1}</th>`).join('')}</tr>`;
+                for(let t=0; t<trials; t++) {
+                    html += `<tr><td class="row-header">Próba ${t+1}</td>`;
+                    for(let p=0; p<parts; p++) {
+                        html += `<td><input type="text" class="grid-cell input-cell" data-a="${a}" data-t="${t}" data-p="${p}"></td>`;
+                    }
+                    html += `</tr>`;
+                }
+                html += `</table></div>`;
+                container.innerHTML += html;
+            }
+
+            document.querySelectorAll('.grid-cell').forEach(cell => {
+                cell.addEventListener('change', () => saveState());
+            });
+
+            undoStack = [];
+            redoStack = [];
+            let initialState = {};
+            document.querySelectorAll('.grid-cell').forEach((cell, idx) => {
+                initialState[idx] = cell.value;
+            });
+            undoStack.push(JSON.stringify(initialState));
+            updateToolbarButtons();
+        }
+
+        window.onload = buildGrid;
+
+        function setStatus(elementId, value) {
+            let el = document.getElementById(elementId);
+            if(value <= 10) { el.innerText = "Wyśmienity"; el.className = "status-ok"; }
+            else if(value <= 30) { el.innerText = "Warunkowy"; el.className = "status-warn"; }
+            else { el.innerText = "Odrzucony"; el.className = "status-err"; }
+        }
+
+        function generateReport() {
+            document.getElementById('placeholderArea').style.display = 'none';
+            document.getElementById('resultsDashboard').style.display = 'none';
+            document.getElementById('loadingIndicator').style.display = 'block';
+
+            const type = document.getElementById('analysisType').value;
+
+            setTimeout(async () => {
+                document.getElementById('loadingIndicator').style.display = 'none';
+                document.getElementById('resultsDashboard').style.display = 'flex';
+
+                document.getElementById('metaGageName').innerText = document.getElementById('gageName').value || 'N/A';
+                document.getElementById('metaGageNo').innerText = document.getElementById('gageNo').value || 'N/A';
+                document.getElementById('metaChar').innerText = document.getElementById('characteristic').value || 'N/A';
+                document.getElementById('metaAnalyst').innerText = document.getElementById('analystName').value || 'N/A';
+
+                let today = new Date();
+                document.getElementById('metaDate').innerText = today.toLocaleDateString() + ' ' + today.toLocaleTimeString();
+
+                if(type === 'grr') {
+                    document.getElementById('metaLslDiv').style.display = 'block';
+                    document.getElementById('metaNominalDiv').style.display = 'block';
+                    document.getElementById('metaUslDiv').style.display = 'block';
+
+                    document.getElementById('metaLsl').innerText = document.getElementById('lsl').value;
+                    document.getElementById('metaNominal').innerText = document.getElementById('target').value;
+                    document.getElementById('metaUsl').innerText = document.getElementById('usl').value;
+
+                    await runGageRR();
+                } else {
+                    document.getElementById('metaLslDiv').style.display = 'none';
+                    document.getElementById('metaNominalDiv').style.display = 'none';
+                    document.getElementById('metaUslDiv').style.display = 'none';
+                    await runKappa();
+                }
+
+            }, 800);
+        }
+
+        async function runGageRR() {
+            document.getElementById('kpiGrr').style.display = 'block';
+            document.getElementById('kpiKappa').style.display = 'none';
+
+            const usl = parseFloat(document.getElementById('usl').value);
+            const lsl = parseFloat(document.getElementById('lsl').value);
+            const tol = usl - lsl;
+
+            const n_parts = parseInt(document.getElementById('numParts').value);
+            const a_appr = parseInt(document.getElementById('numAppraisers').value);
+            const r_trials = parseInt(document.getElementById('numTrials').value);
+
+            document.getElementById('metaTotalN').innerText = n_parts;
+
+            const d2 = d2_r[r_trials];
+            const d2_star_a_val = d2_star_a[a_appr];
+            const d2_star_n_val = d2_star_n[n_parts] || 3.18;
+
+            let dataMatrix = Array.from({length: a_appr}, () => Array.from({length: n_parts}, () => []));
+            for(let a=0; a<a_appr; a++) {
+                for(let p=0; p<n_parts; p++) {
+                    for(let t=0; t<r_trials; t++) {
+                        let input = document.querySelector(`.input-cell[data-a="${a}"][data-t="${t}"][data-p="${p}"]`);
+                        let val = input && input.value ? parseFloat(input.value.replace(',', '.')) : 0;
+                        dataMatrix[a][p].push(isNaN(val) ? 0 : val);
+                    }
+                }
+            }
+
+            let R_bars = [];
+            let X_bars = [];
+            let chartLabels = [];
+            let chartXData = [];
+            let chartRData = [];
+            let globalSumX = 0;
+            let totalCount = 0;
+
+            for(let a=0; a<a_appr; a++) {
+                let sumR = 0, sumX = 0;
+                for(let p=0; p<n_parts; p++) {
+                    let max = Math.max(...dataMatrix[a][p]);
+                    let min = Math.min(...dataMatrix[a][p]);
+                    let ptAvg = dataMatrix[a][p].reduce((x,y)=>x+y)/r_trials;
+
+                    sumR += (max - min);
+                    sumX += ptAvg;
+
+                    chartLabels.push(`Op${['A','B','C'][a]}-P${p+1}`);
+                    chartXData.push(ptAvg);
+                    chartRData.push(max - min);
+                    globalSumX += ptAvg;
+                    totalCount++;
+                }
+                R_bars.push(sumR / n_parts);
+                X_bars.push(sumX / n_parts);
+            }
+
+            let R_doubleBar = R_bars.reduce((x,y)=>x+y) / a_appr;
+            let X_diff = Math.max(...X_bars) - Math.min(...X_bars);
+            let globalXBar = globalSumX / totalCount;
+
+            let D4 = D4_r[r_trials];
+            let A2 = A2_r[r_trials];
+            let UCL_R = R_doubleBar * D4;
+            let UCL_X = globalXBar + (A2 * R_doubleBar);
+            let LCL_X = globalXBar - (A2 * R_doubleBar);
+
+            let S_EV = R_doubleBar / d2;
+            let av_raw = Math.pow(X_diff / d2_star_a_val, 2) - (Math.pow(S_EV, 2) / (n_parts * r_trials));
+            let S_AV = av_raw > 0 ? Math.sqrt(av_raw) : 0;
+            let S_GRR = Math.sqrt(Math.pow(S_EV, 2) + Math.pow(S_AV, 2));
+
+            let Part_X_bars = [];
+            for(let p=0; p<n_parts; p++) {
+                let sumP = 0;
+                for(let a=0; a<a_appr; a++) {
+                    sumP += dataMatrix[a][p].reduce((x,y)=>x+y)/r_trials;
+                }
+                Part_X_bars.push(sumP / a_appr);
+            }
+            let Rp = Math.max(...Part_X_bars) - Math.min(...Part_X_bars);
+
+            let S_PV = Rp / d2_star_n_val;
+            let S_TV = Math.sqrt(Math.pow(S_GRR, 2) + Math.pow(S_PV, 2));
+
+            let SV_EV = 6 * S_EV;
+            let SV_AV = 6 * S_AV;
+            let SV_GRR = 6 * S_GRR;
+            let SV_PV = 6 * S_PV;
+            let SV_TV = 6 * S_TV;
+
+            let pctSV_EV = (S_EV / S_TV) * 100;
+            let pctSV_AV = (S_AV / S_TV) * 100;
+            let pctSV_GRR = (S_GRR / S_TV) * 100;
+            let pctSV_PV = (S_PV / S_TV) * 100;
+
+            let pctTol_EV = (SV_EV / tol) * 100;
+            let pctTol_AV = (SV_AV / tol) * 100;
+            let pctTol_GRR = (SV_GRR / tol) * 100;
+            let pctTol_PV = (SV_PV / tol) * 100;
+            let pctTol_TV = (SV_TV / tol) * 100;
+
+            let ndc = Math.floor(1.41 * (S_PV / S_GRR));
+            if(isNaN(ndc) || !isFinite(ndc)) ndc = 0;
+
+            document.getElementById('resS_EV').innerText = S_EV.toFixed(5);
+            document.getElementById('resSV_EV').innerText = SV_EV.toFixed(5);
+            document.getElementById('resPctSV_EV').innerText = pctSV_EV.toFixed(2) + '%';
+            document.getElementById('resPctTol_EV').innerText = pctTol_EV.toFixed(2) + '%';
+
+            document.getElementById('resS_AV').innerText = S_AV.toFixed(5);
+            document.getElementById('resSV_AV').innerText = SV_AV.toFixed(5);
+            document.getElementById('resPctSV_AV').innerText = pctSV_AV.toFixed(2) + '%';
+            document.getElementById('resPctTol_AV').innerText = pctTol_AV.toFixed(2) + '%';
+
+            document.getElementById('resS_GRR').innerText = S_GRR.toFixed(5);
+            document.getElementById('resSV_GRR').innerText = SV_GRR.toFixed(5);
+            document.getElementById('resPctSV_GRR').innerText = pctSV_GRR.toFixed(2) + '%';
+            document.getElementById('resPctTol_GRR').innerText = pctTol_GRR.toFixed(2) + '%';
+
+            document.getElementById('resS_PV').innerText = S_PV.toFixed(5);
+            document.getElementById('resSV_PV').innerText = SV_PV.toFixed(5);
+            document.getElementById('resPctSV_PV').innerText = pctSV_PV.toFixed(2) + '%';
+            document.getElementById('resPctTol_PV').innerText = pctTol_PV.toFixed(2) + '%';
+
+            document.getElementById('resS_TV').innerText = S_TV.toFixed(5);
+            document.getElementById('resSV_TV').innerText = SV_TV.toFixed(5);
+            document.getElementById('resPctTol_TV').innerText = pctTol_TV.toFixed(2) + '%';
+
+            document.getElementById('sumEV').innerText = pctTol_EV.toFixed(1) + '%';
+            document.getElementById('sumAV').innerText = pctTol_AV.toFixed(1) + '%';
+            document.getElementById('sumGRR').innerText = pctTol_GRR.toFixed(1) + '%';
+            document.getElementById('sumNDC').innerText = ndc;
+
+            setStatus('statusEV', pctTol_EV);
+            setStatus('statusAV', pctTol_AV);
+            setStatus('statusGRR', pctTol_GRR);
+
+            let elNdc = document.getElementById('statusNDC');
+            if(ndc >= 5) { elNdc.innerText = "OK"; elNdc.className = "status-ok"; }
+            else { elNdc.innerText = "Odrzucony"; elNdc.className = "status-err"; }
+
+            // ŻYWE WZORY MATEMATYCZNE Z WYNIKAMI
+            document.getElementById('f_ev').innerHTML = `EV = R̿ / d₂ = ${R_doubleBar.toFixed(5)} / ${d2.toFixed(3)} = <strong>${S_EV.toFixed(5)}</strong>`;
+            document.getElementById('f_av').innerHTML = `AV = √ [ (X̄_diff / d₂*)² - (EV² / (n × r)) ] = √ [ (${X_diff.toFixed(5)} / ${d2_star_a_val.toFixed(3)})² - (${S_EV.toFixed(5)}² / (${n_parts} × ${r_trials})) ] = <strong>${S_AV.toFixed(5)}</strong>`;
+            document.getElementById('f_grr').innerHTML = `GRR = √ (EV² + AV²) = √ (${S_EV.toFixed(5)}² + ${S_AV.toFixed(5)}²) = <strong>${S_GRR.toFixed(5)}</strong>`;
+            document.getElementById('f_pv').innerHTML = `PV = R_p / d₂* = ${Rp.toFixed(5)} / ${d2_star_n_val.toFixed(3)} = <strong>${S_PV.toFixed(5)}</strong>`;
+            document.getElementById('f_tv').innerHTML = `TV = √ (GRR² + PV²) = √ (${S_GRR.toFixed(5)}² + ${S_PV.toFixed(5)}²) = <strong>${S_TV.toFixed(5)}</strong>`;
+            document.getElementById('f_ndc').innerHTML = `ndc = 1.41 × (PV / GRR) = 1.41 × (${S_PV.toFixed(5)} / ${S_GRR.toFixed(5)}) = <strong>${ndc}</strong>`;
+
+            drawControlCharts(chartLabels, chartXData, chartRData, globalXBar, UCL_X, LCL_X, R_doubleBar, UCL_R, usl, lsl);
+
+            // AI Call
+            document.getElementById('aiText').innerHTML = "<i class='fas fa-spinner fa-spin'></i> AI Groq analizuje wyniki...";
+            try {
+                let res = await fetch('/api/generate_msa_ai', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ grr: pctTol_GRR.toFixed(1), ndc: ndc, ev: pctTol_EV.toFixed(1), av: pctTol_AV.toFixed(1) })
+                });
+                let data = await res.json();
+                document.getElementById('aiText').innerHTML = data.recommendation || "Brak odpowiedzi od AI.";
+            } catch(e) {
+                document.getElementById('aiText').innerHTML = "Błąd połączenia z API Groq. Sprawdź serwer.";
+            }
+        }
+
+        async function runKappa() {
+            document.getElementById('kpiGrr').style.display = 'none';
+            document.getElementById('kpiKappa').style.display = 'block';
+
+            const n_parts = parseInt(document.getElementById('numKappaParts').value);
+            const a_appr = parseInt(document.getElementById('numKappaAppraisers').value);
+            const r_trials = parseInt(document.getElementById('numKappaTrials').value);
+            document.getElementById('metaTotalN').innerText = n_parts;
+
+            let matchCount = 0;
+            let totalDecisions = n_parts * a_appr * r_trials;
+            let missCount = 0;
+            let falseAlarmCount = 0;
+
+            let stdOk = 0, stdNok = 0;
+            let appOk = 0, appNok = 0;
+
+            let appStats = [];
+            for(let a=0; a<a_appr; a++) {
+                appStats.push({ matches: 0, misses: 0, falseAlarms: 0, total: n_parts * r_trials });
+            }
+
+            let isOk = (val) => ['1', 'OK', 'PASS', 'P', 'Y', 'YES', 'TAK'].includes(val.toUpperCase());
+            let isNok = (val) => ['0', 'NOK', 'FAIL', 'F', 'NG', 'N', 'NO', 'NIE'].includes(val.toUpperCase());
+
+            for(let p=0; p<n_parts; p++) {
+                let refInputs = document.querySelectorAll('.ref-cell');
+                let standardVal = refInputs[p] && refInputs[p].value ? String(refInputs[p].value).trim().toUpperCase() : "";
+
+                let stdIsOk = isOk(standardVal);
+                let stdIsNok = isNok(standardVal);
+                if(stdIsOk) stdOk++;
+                if(stdIsNok) stdNok++;
+
+                for(let a=0; a<a_appr; a++) {
+                    for(let t=0; t<r_trials; t++) {
+                        let input = document.querySelector(`.input-cell[data-a="${a}"][data-t="${t}"][data-p="${p}"]`);
+                        let val = input && input.value ? String(input.value).trim().toUpperCase() : "";
+
+                        let appIsOk = isOk(val);
+                        let appIsNok = isNok(val);
+                        if(appIsOk) appOk++;
+                        if(appIsNok) appNok++;
+
+                        if(val === standardVal && val !== "") {
+                            matchCount++;
+                            appStats[a].matches++;
+                        } else if (appIsOk && stdIsNok) {
+                            missCount++;
+                            appStats[a].misses++;
+                        } else if (appIsNok && stdIsOk) {
+                            falseAlarmCount++;
+                            appStats[a].falseAlarms++;
+                        }
+                    }
+                }
+            }
+
+            let p_obs = matchCount / totalDecisions;
+            let p_std_ok = stdOk / n_parts;
+            let p_std_nok = stdNok / n_parts;
+            let p_app_ok = appOk / totalDecisions;
+            let p_app_nok = appNok / totalDecisions;
+
+            let p_exp = (p_std_ok * p_app_ok) + (p_std_nok * p_app_nok);
+            let kappa = p_exp !== 1 ? (p_obs - p_exp) / (1 - p_exp) : p_obs;
+            if (kappa < 0 || isNaN(kappa)) kappa = 0;
+
+            // Wypełnianie nowej tabeli rozbudowanej dla Kappa
+            let appHtml = '';
+            for(let a=0; a<a_appr; a++) {
+                let eff = (appStats[a].matches / appStats[a].total) * 100;
+                appHtml += `<tr>
+                    <td class="row-title">Operator ${['A','B','C','D','E'][a]}</td>
+                    <td>${appStats[a].total}</td>
+                    <td class="status-ok">${appStats[a].matches}</td>
+                    <td class="status-err">${appStats[a].misses}</td>
+                    <td class="status-warn">${appStats[a].falseAlarms}</td>
+                    <td><strong>${eff.toFixed(1)}%</strong></td>
+                </tr>`;
+            }
+            document.getElementById('kappaAppraiserTable').innerHTML = appHtml;
+
+            document.getElementById('res_pobs').innerText = p_obs.toFixed(4);
+            document.getElementById('res_pexp').innerText = p_exp.toFixed(4);
+            document.getElementById('res_kappa_val').innerText = kappa.toFixed(4);
+
+            let effectiveness = (matchCount / totalDecisions) * 100;
+            let missRate = (missCount / totalDecisions) * 100;
+            drawKappaChart(['Zgodność %', 'Przeoczenia %', 'Fałszywe Alarmy %'], [effectiveness, missRate, (falseAlarmCount/totalDecisions)*100]);
+
+            document.getElementById('aiTextKappa').innerHTML = "<i class='fas fa-spinner fa-spin'></i> AI Groq analizuje Kappa...";
+            try {
+                let res = await fetch('/api/generate_msa_ai', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ grr: "N/A", ndc: "N/A", ev: kappa.toFixed(2) + " (Kappa)", av: effectiveness.toFixed(1) + "% Zgodności" })
+                });
+                let data = await res.json();
+                document.getElementById('aiTextKappa').innerHTML = data.recommendation || "Brak odpowiedzi od AI.";
+            } catch(e) {
+                document.getElementById('aiTextKappa').innerHTML = "Błąd połączenia z API Groq.";
+            }
+        }
+
+        function drawControlCharts(labels, xData, rData, xBar, uclX, lclX, rBar, uclR, usl, lsl) {
+            const ctxX = document.getElementById('xbarChart').getContext('2d');
+            const ctxR = document.getElementById('rChart').getContext('2d');
+
+            if(xbarChartObj) xbarChartObj.destroy();
+            if(rChartObj) rChartObj.destroy();
+
+            document.getElementById('xbarChart').parentElement.style.display = 'block';
+            document.getElementById('rChart').parentElement.style.display = 'block';
+            if(document.getElementById('kappaChart')) document.getElementById('kappaChart').parentElement.style.display = 'none';
+
+            let minY_X = Math.min(...xData, lclX, lsl) - (usl-lsl)*0.1;
+            let maxY_X = Math.max(...xData, uclX, usl) + (usl-lsl)*0.1;
+            let maxY_R = Math.max(...rData, uclR) * 1.1;
+
+            const commonOptions = {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { display: true, labels: { color: '#f8fafc', font: {size: 11} } } },
+                scales: {
+                    x: { ticks: { color: '#94a3b8', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.05)' } },
+                    y: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255,255,255,0.1)' } }
+                }
+            };
+
+            xbarChartObj = new Chart(ctxX, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        { label: 'Średnia', data: xData, borderColor: '#3b82f6', backgroundColor: '#3b82f6', borderWidth: 2, pointRadius: 4, tension: 0 },
+                        { label: 'UCL (Szum)', data: Array(labels.length).fill(uclX), borderColor: '#ff0000', borderWidth: 3, borderDash: [5, 5], pointRadius: 0 },
+                        { label: 'LCL (Szum)', data: Array(labels.length).fill(lclX), borderColor: '#ff0000', borderWidth: 3, borderDash: [5, 5], pointRadius: 0 },
+                        { label: 'USL (Specyfikacja)', data: Array(labels.length).fill(usl), borderColor: '#f59e0b', borderWidth: 3, borderDash: [10, 5], pointRadius: 0 },
+                        { label: 'LSL (Specyfikacja)', data: Array(labels.length).fill(lsl), borderColor: '#f59e0b', borderWidth: 3, borderDash: [10, 5], pointRadius: 0 },
+                        { label: 'Średnia Całk.', data: Array(labels.length).fill(xBar), borderColor: '#10b981', borderWidth: 2, pointRadius: 0 }
+                    ]
+                },
+                options: { ...commonOptions, scales: { ...commonOptions.scales, y: { min: minY_X, max: maxY_X, ticks: {color: '#94a3b8'}, grid: {color: 'rgba(255,255,255,0.1)'} } }, plugins: { ...commonOptions.plugins, title: { display: true, text: 'X-Bar Chart (Tolerancja klienta vs Szum przyrządu)', color: '#f8fafc', font: {size: 14} } } }
+            });
+
+            rChartObj = new Chart(ctxR, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        { label: 'Rozstęp (R)', data: rData, borderColor: '#3b82f6', backgroundColor: '#3b82f6', borderWidth: 2, pointRadius: 4, tension: 0 },
+                        { label: 'UCL', data: Array(labels.length).fill(uclR), borderColor: '#ff0000', borderWidth: 3, borderDash: [5, 5], pointRadius: 0 },
+                        { label: 'Średnia (R-bar)', data: Array(labels.length).fill(rBar), borderColor: '#10b981', borderWidth: 2, pointRadius: 0 }
+                    ]
+                },
+                options: { ...commonOptions, scales: { ...commonOptions.scales, y: { min: 0, max: maxY_R, ticks: {color: '#94a3b8'}, grid: {color: 'rgba(255,255,255,0.1)'} } }, plugins: { ...commonOptions.plugins, title: { display: true, text: 'R Chart by Appraiser (Spójność Operatorów)', color: '#f8fafc', font: {size: 14} } } }
+            });
+        }
+
+        function drawKappaChart(labels, data) {
+            document.getElementById('xbarChart').parentElement.style.display = 'none';
+            document.getElementById('rChart').parentElement.style.display = 'none';
+
+            let kappaCanvas = document.getElementById('kappaChart');
+            if(!kappaCanvas) {
+                let div = document.createElement('div');
+                div.className = 'chart-wrapper';
+                kappaCanvas = document.createElement('canvas');
+                kappaCanvas.id = 'kappaChart';
+                div.appendChild(kappaCanvas);
+                document.getElementById('kpiKappa').appendChild(div);
+            }
+            kappaCanvas.parentElement.style.display = 'block';
+
+            const ctx = kappaCanvas.getContext('2d');
+            if(kappaChartObj) kappaChartObj.destroy();
+
+            kappaChartObj = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{ label: 'Wartość %', data: data, backgroundColor: ['#10b981', '#ef4444', '#f59e0b'], borderRadius: 6 }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: { beginAtZero: true, max: 100, ticks: { color: '#94a3b8' } },
+                        x: { ticks: { color: '#f8fafc', font: { size: 13, weight: 'bold' } } }
+                    }
+                }
+            });
+        }
+
+        function exportPDF() {
+            window.print();
+        }
+    </script>
+</body>
+</html>

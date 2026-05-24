@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Baza Wiedzy - BMZ Quality Hub</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --primary: #00AEEF;
+            --primary-glow: rgba(0, 174, 239, 0.6);
+            --bg-dark: #0b1120;
+            --text-main: #f8fafc;
+            --panel-bg: rgba(30, 41, 59, 0.85);
+            --border-color: rgba(255, 255, 255, 0.15);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            min-height: 100vh;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        .bg-layer {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: -2;
+            background-image: url("{{ url_for('static', filename='images/batterySPC.png') }}");
+            background-size: cover; background-position: center;
+            filter: brightness(0.25) contrast(1.1);
+        }
+
+        .overlay {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: -1;
+            background: linear-gradient(135deg, rgba(11,17,32,0.95) 0%, rgba(11,17,32,0.8) 100%);
+            backdrop-filter: blur(10px);
+        }
+
+        .navbar {
+            height: 80px; display: flex; justify-content: space-between; align-items: center;
+            padding: 0 40px; background: rgba(11, 17, 32, 0.8);
+            border-bottom: 1px solid var(--border-color);
+            position: sticky; top: 0; z-index: 100;
+        }
+        .navbar-brand { color: #fff; font-size: 1.6rem; font-weight: 800; display: flex; align-items: center; gap: 12px; }
+        .navbar-brand i { color: var(--primary); }
+        .navbar-back { color: #94a3b8; text-decoration: none; font-weight: 500; font-size: 1.1rem; transition: 0.3s; }
+        .navbar-back:hover { color: #fff; }
+
+        .container {
+            max-width: 1400px;
+            margin: 50px auto;
+            padding: 0 20px;
+            animation: fadeIn 0.8s ease forwards;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .page-header {
+            text-align: center;
+            margin-bottom: 50px;
+        }
+
+        .page-header h1 {
+            font-size: 3rem;
+            font-weight: 800;
+            margin-bottom: 15px;
+            background: linear-gradient(45deg, #fff, var(--primary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .page-header p {
+            font-size: 1.2rem;
+            color: #94a3b8;
+            max-width: 600px;
+            margin: 0 auto;
+            line-height: 1.6;
+        }
+
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 30px;
+        }
+
+        .course-card {
+            background: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 30px;
+            transition: all 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            overflow: hidden;
+            text-decoration: none;
+        }
+
+        .course-card::before {
+            content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 4px;
+            background: var(--primary); transform: scaleX(0); transform-origin: left; transition: transform 0.4s ease;
+        }
+
+        .course-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.6);
+            border-color: rgba(0, 174, 239, 0.4);
+        }
+
+        .course-card:hover::before { transform: scaleX(1); }
+
+        .course-icon {
+            width: 60px; height: 60px;
+            background: rgba(0, 174, 239, 0.1);
+            border: 1px solid rgba(0, 174, 239, 0.3);
+            border-radius: 12px;
+            display: flex; justify-content: center; align-items: center;
+            font-size: 1.8rem; color: var(--primary);
+            margin-bottom: 20px;
+            transition: 0.3s;
+        }
+
+        .course-card:hover .course-icon {
+            background: var(--primary);
+            color: #000;
+            box-shadow: 0 0 20px var(--primary-glow);
+            transform: rotate(-10deg);
+        }
+
+        .course-title {
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 10px;
+        }
+
+        .course-desc {
+            color: #94a3b8;
+            font-size: 0.95rem;
+            line-height: 1.5;
+            margin-bottom: 25px;
+            flex-grow: 1;
+        }
+
+        .btn-download {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid var(--border-color);
+            color: #fff;
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-weight: 600;
+            text-align: center;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            transition: 0.3s;
+            text-decoration: none;
+        }
+
+        .course-card:hover .btn-download {
+            background: var(--primary);
+            color: #000;
+            border-color: var(--primary);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="bg-layer"></div>
+    <div class="overlay"></div>
+
+    <nav class="navbar">
+        <div class="navbar-brand">
+            <i class="fas fa-graduation-cap"></i> Szkolenia & Baza Wiedzy
+        </div>
+        <a href="/" class="navbar-back"><i class="fas fa-arrow-left"></i> Wróć do Hubu</a>
+    </nav>
+
+    <div class="container">
+        <div class="page-header">
+            <h1>Materiały Szkoleniowe</h1>
+            <p>Kliknij wybraną prezentację, aby otworzyć podręcznik wygenerowany w aplikacji Gamma. Dowiesz się stąd, jak prawidłowo interpretować dane i korzystać z narzędzi systemowych.</p>
+        </div>
+
+        <div class="grid-container">
+            <!-- Pętla Jinja generuje kafelki na podstawie listy MODULES z app.py -->
+            {% for mod in modules %}
+            <!-- Ścieżka zakłada, że pliki to PDFy w folderze static/presentations/ -->
+            <a href="{{ url_for('static', filename='presentations/' ~ mod.id ~ '.pdf') }}" target="_blank" class="course-card">
+                <div class="course-icon"><i class="fas {{ mod.icon }}"></i></div>
+                <div class="course-title">{{ mod.title }}</div>
+                <div class="course-desc">Pełna prezentacja metodyki i zasad. Obejmuje najlepsze praktyki oraz sposób obsługi modułu.</div>
+
+                <div class="btn-download">
+                    <i class="fas fa-file-pdf"></i> Otwórz Prezentację
+                </div>
+            </a>
+            {% endfor %}
+        </div>
+    </div>
+
+</body>
+</html>
